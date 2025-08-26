@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Truck, CheckCircle, Headphones, Gift, Star, Sparkles, AlertCircle, Clock, Zap, Users } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import ProductCard from '../../components/common/ProductCard';
+import { HotDeals } from '../../components/customer/HotDeals';
 import { projectId } from '../../utils/supabase/info';
 import { motion } from 'framer-motion';
 
@@ -195,7 +196,7 @@ export default function Home() {
       } catch (error) {
         console.error('Server connection failed:', error);
         setServerStatus('offline');
-        setErrorDetails(`Connection error: ${error.message}`);
+        setErrorDetails(`Connection error: ${(error as Error).message}`);
       }
     };
 
@@ -364,114 +365,7 @@ export default function Home() {
       {/* Hot Deals & Promotions Section */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex justify-between items-center mb-8"
-          >
-            <div>
-              <h2 className="text-3xl font-bold text-[#2C3E50] mb-2">Hot Deals & Promotions</h2>
-              <p className="text-gray-600">Limited time offers on professional cleaning supplies</p>
-            </div>
-            <Link 
-              to={buildViewAllPromotionsUrl()} 
-              className="text-[#4682B4] hover:text-[#2C3E50] font-medium flex items-center group bg-[#F8F9FA] hover:bg-[#B0E0E6]/20 px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              View All Promotions
-              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </motion.div>
-         
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activePromotions.map((promotion, index) => (
-              <motion.div
-                key={promotion.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="relative overflow-hidden rounded-2xl shadow-xl group cursor-pointer transform hover:-translate-y-2 transition-all duration-300"
-              >
-                <Link to={buildPromotionUrl(promotion)} className="block">
-                  <ImageWithFallback
-                    src={promotion.image_url}
-                    alt={promotion.title}
-                    className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end">
-                    <div className="p-6 text-white w-full">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                          promotion.urgent ? 'bg-[#FF6B35] animate-pulse' : 'bg-[#28A745]'
-                        }`}>
-                          {promotion.urgent ? (
-                            <>
-                              <Clock className="h-4 w-4 mr-2" />
-                              {promotion.badge}
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="h-4 w-4 mr-2" />
-                              {promotion.badge}
-                            </>
-                          )}
-                        </div>
-                        {promotion.timeLeft && (
-                          <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-mono">
-                            {promotion.timeLeft}
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="text-2xl font-bold mb-2">{promotion.title}</h3>
-                      <p className="text-gray-200">{promotion.description}</p>
-                      
-                      {/* Promotion Details */}
-                      <div className="mt-3 flex items-center space-x-4">
-                        {promotion.discount_percentage && (
-                          <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                            {promotion.discount_percentage}% OFF
-                          </span>
-                        )}
-                        {promotion.discount_type === 'buy_x_get_y' && (
-                          <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                            Buy {promotion.buy_quantity} Get {promotion.get_quantity} Free
-                          </span>
-                        )}
-                        <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
-                          {promotion.applicable_categories.join(', ')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-full px-6 py-3">
-                      <span className="text-white font-semibold flex items-center">
-                        Shop Now
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* No active promotions message */}
-          {activePromotions.length === 0 && (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">🎯</div>
-              <h3 className="text-xl font-semibold text-[#2C3E50] mb-2">No Active Promotions</h3>
-              <p className="text-gray-600 mb-6">Check back soon for amazing deals on cleaning supplies!</p>
-              <Link
-                to="/products"
-                className="bg-[#4682B4] text-white px-6 py-3 rounded-xl hover:bg-[#2C3E50] transition-colors"
-              >
-                Browse All Products
-              </Link>
-            </div>
-          )}
+          <HotDeals showTitle={true} maxDeals={4} />
         </div>
       </section>
 
