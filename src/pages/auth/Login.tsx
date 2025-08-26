@@ -22,7 +22,7 @@ export default function Login() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loginState, setLoginState] = useState<'form' | 'success'>('form');
 
-  const { signIn, user, userProfile, loading } = useAuth();
+  const { signIn, signOut, user, userProfile, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -254,6 +254,32 @@ export default function Login() {
             <div className="flex items-start space-x-2">
               <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
               <div className="text-sm text-red-700">{errors.general}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Section - Show when there's a session mismatch */}
+        {loading && process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-yellow-800">Debug: Authentication State Issue</h4>
+                <p className="text-sm text-yellow-700 mt-1">
+                  The app is stuck in loading state. This might be due to a session mismatch.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    console.log('🧹 Manual logout triggered');
+                    await signOut();
+                    window.location.reload();
+                  }}
+                  className="mt-2 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                >
+                  Clear Session & Reload
+                </button>
+              </div>
             </div>
           </div>
         )}

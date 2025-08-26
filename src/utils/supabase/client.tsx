@@ -8,10 +8,10 @@ export const supabase = createClient(
   publicAnonKey,
   {
     auth: {
-      persistSession: true,
+      persistSession: false, // Disable session persistence to require fresh sign-in
       storageKey: 'best-brightness-auth',
       storage: window.localStorage,
-      autoRefreshToken: true,
+      autoRefreshToken: false, // Disable auto refresh since we're not persisting
       detectSessionInUrl: true,
     },
     db: {
@@ -24,7 +24,7 @@ export const supabase = createClient(
       // Reduce timeouts to fail faster on connection issues
       fetch: (url, options = {}) => {
         // Use the safe fetch from error handler
-        return errorHandler.safeFetch(url, {
+        return errorHandler.safeFetch(url.toString(), {
           ...options,
           signal: AbortSignal.timeout(10000), // 10 second timeout
         }).then(response => {

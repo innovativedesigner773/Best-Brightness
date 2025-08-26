@@ -67,6 +67,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading: true,
   });
 
+  // Monitor auth state changes for debugging
+  useEffect(() => {
+    console.log('🎯 AuthState Updated:', {
+      user: authState.user?.id || null,
+      email: authState.user?.email || null,
+      userProfile: authState.userProfile?.role || null,
+      loading: authState.loading,
+      timestamp: new Date().toISOString()
+    });
+  }, [authState]);
+
   // Fetch user profile from database
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
@@ -123,41 +134,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log('🔄 Initializing auth...');
         
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Clear any existing auth storage to ensure clean state
+        console.log('🧹 Clearing auth storage for fresh start...');
         
-        if (error) {
-          console.error('❌ Error getting session:', error);
-          if (mounted) {
-            setAuthState({
-              user: null,
-              userProfile: null,
-              profile: null,
-              session: null,
-              loading: false,
-            });
+        // Clear all possible auth storage keys
+        const keysToRemove = [
+          'best-brightness-auth',
+          'supabase.auth.token',
+          'sb-yusvpxltvvlhubwqeuzi-auth-token',
+          'sb-auth-token'
+        ];
+        
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        
+        // Clear any Supabase-related storage with dynamic project ID
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('supabase') || key.includes('auth') || key.includes('yusvpxltvvlhubwqeuzi')) {
+            localStorage.removeItem(key);
           }
-          return;
-        }
-
-        if (session?.user && mounted) {
-          console.log('✅ Initial session found for user:', session.user.email);
-          
-          // Fetch user profile
-          const profile = await fetchUserProfile(session.user.id);
-          
-          setAuthState({
-            user: session.user,
-            userProfile: profile,
-            profile: profile, // Set both for backwards compatibility
-            session,
-            loading: false,
-          });
-
-          // Update last login
-          await updateLastLogin(session.user.id);
-        } else if (mounted) {
-          console.log('ℹ️ No initial session found');
+        });
+        
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('supabase') || key.includes('auth') || key.includes('yusvpxltvvlhubwqeuzi')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+        
+        // Force clear any existing sessions to require fresh sign-in
+        console.log('🧹 Clearing any existing sessions to ensure fresh sign-in...');
+        await supabase.auth.signOut();
+        
+        // Always start with no session - require fresh sign-in
+        if (mounted) {
+          console.log('✅ Session cleared - requiring fresh sign-in');
           setAuthState({
             user: null,
             userProfile: null,
@@ -178,9 +190,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           });
         }
       }
-    };
+    };    initializeAuth();
 
-    initializeAuth();
+    // Add window beforeunload listener to ensure clean state on refresh
+    const handleBeforeUnload = () => {
+      console.log('🔄 Page unloading - clearing auth state...');
+      localStorage.removeItem('best-brightness-auth');
+      sessionStorage.removeItem('best-brightness-auth');
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -191,19 +210,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ Processing SIGNED_IN event for user:', session.user.id);
+          console.log('🔍 Current auth state before update:', {
+            user: authState.user?.id || null,
+            userProfile: authState.userProfile?.role || null,
+            loading: authState.loading
+          });
           
-          // Fetch user profile
-          const profile = await fetchUserProfile(session.user.id);
+          // Fetch user profile with timeout
+          const profilePromise = fetchUserProfile(session.user.id);
+          const timeoutPromise = new Promise<null>((resolve) => {
+            setTimeout(() => {
+              console.log('⏰ Profile fetch timeout, continuing without profile');
+              resolve(null);
+            }, 3000); // 3 second timeout
+          });
+          
+          const profile = await Promise.race([profilePromise, timeoutPromise]);
           console.log('📝 Profile fetched, updating auth state...', { profile });
           
-          setAuthState(prev => ({
-            ...prev,
+          const newState = {
             user: session.user,
             userProfile: profile,
             profile: profile, // Set both for backwards compatibility
             session,
             loading: false,
-          }));
+          };
+          
+          console.log('🔄 Setting new auth state:', newState);
+          
+          // Force state update
+          setAuthState(newState);
 
           console.log('✅ Auth state updated with user and profile');
 
@@ -230,6 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
