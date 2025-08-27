@@ -1,31 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Percent, Tag, Clock, Zap, Gift, Truck, ShoppingCart } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { Link } from 'react-router-dom';
+import { Flame, Clock, Tag, ArrowRight, Star, ShoppingCart } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
+import { useCart } from '../../contexts/CartContext';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface Promotion {
   id: string;
-  name: string;
-  code: string;
+  title: string;
   description: string;
-  type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
-  value: number;
+  code: string;
+  discount_type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
+  discount_value: number;
   minimum_order_amount: number;
-  maximum_discount_amount?: number;
   start_date: string;
-  end_date?: string;
+  end_date: string;
+  is_active: boolean;
   applies_to: 'all' | 'specific_products' | 'specific_categories';
 }
 
-interface HotDealsProps {
-  showTitle?: boolean;
-  maxDeals?: number;
-  className?: string;
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  compare_at_price?: number;
+  images: string[];
+  sku: string;
+  description: string;
+  stock_quantity: number;
+  category?: {
+    name: string;
+  };
 }
 
-export function HotDeals({ showTitle = true, maxDeals = 4, className = '' }: HotDealsProps) {
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
+interface HotDealsProps {
+  maxPromotions?: number;
+  showViewAll?: boolean;
+}
+
+export function HotDeals({ maxPromotions = 6, showViewAll = true }: HotDealsProps) {
+  const [activePromotions, setActivePromotions] = useState<Promotion[]>([]);
+  const [promotionalProducts, setPromotionalProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     fetchActivePromotions();
@@ -33,235 +51,332 @@ export function HotDeals({ showTitle = true, maxDeals = 4, className = '' }: Hot
 
   const fetchActivePromotions = async () => {
     try {
-      const now = new Date().toISOString();
+      setLoading(true);
       
-      const { data, error } = await supabase
+      // Fetch active promotions
+      const { data: promotionsData, error: promotionsError } = await supabase
         .from('promotions')
         .select('*')
         .eq('is_active', true)
-        .lte('start_date', now)
-        .or(`end_date.is.null,end_date.gte.${now}`)
+        .gte('end_date', new Date().toISOString())
+        .lte('start_date', new Date().toISOString())
         .order('created_at', { ascending: false })
-        .limit(maxDeals);
+        .limit(maxPromotions);
 
-      if (error) throw error;
+      if (promotionsError) {
+        console.error('❌ Error fetching promotions:', promotionsError);
+        return;
+      }
 
-      setPromotions(data || []);
+      console.log('🔥 Active promotions fetched:', promotionsData);
+      setActivePromotions(promotionsData || []);
+
+      // Fetch products with discounts (compare_at_price > price)
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select(`
+          id, name, price, compare_at_price, images, sku, description, stock_quantity,
+          category:categories(name)
+        `)
+        .eq('is_active', true)
+        .gt('stock_quantity', 0)
+        .not('compare_at_price', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (productsError) {
+        console.error('❌ Error fetching promotional products:', productsError);
+        return;
+      }
+
+      console.log('🛍️ Promotional products fetched:', productsData);
+      
+      // Transform the data to match our interface
+      const transformedProducts: Product[] = (productsData || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        compare_at_price: item.compare_at_price,
+        images: item.images,
+        sku: item.sku,
+        description: item.description,
+        stock_quantity: item.stock_quantity,
+        category: item.category?.[0] || { name: 'Uncategorized' }
+      }));
+      
+      setPromotionalProducts(transformedProducts);
+      
     } catch (error) {
-      console.error('Error fetching promotions:', error);
+      console.error('Error fetching hot deals:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getPromotionIcon = (type: string) => {
-    switch (type) {
-      case 'percentage': return <Percent className="h-5 w-5" />;
-      case 'fixed_amount': return <Tag className="h-5 w-5" />;
-      case 'buy_x_get_y': return <Gift className="h-5 w-5" />;
-      case 'free_shipping': return <Truck className="h-5 w-5" />;
-      default: return <Zap className="h-5 w-5" />;
-    }
-  };
-
-  const getPromotionDisplay = (promotion: Promotion) => {
-    switch (promotion.type) {
+  const getDiscountText = (promotion: Promotion) => {
+    switch (promotion.discount_type) {
       case 'percentage':
-        return `${promotion.value}% OFF`;
+        return `${promotion.discount_value}% OFF`;
       case 'fixed_amount':
-        return `$${promotion.value} OFF`;
-      case 'buy_x_get_y':
-        return 'BOGO DEAL';
+        return `$${promotion.discount_value} OFF`;
       case 'free_shipping':
         return 'FREE SHIPPING';
+      case 'buy_x_get_y':
+        return 'BOGO DEAL';
       default:
-        return 'SPECIAL DEAL';
+        return 'SPECIAL OFFER';
     }
   };
 
   const getTimeRemaining = (endDate: string) => {
-    const now = new Date().getTime();
     const end = new Date(endDate).getTime();
-    const diff = end - now;
+    const now = new Date().getTime();
+    const difference = end - now;
 
-    if (diff <= 0) return null;
+    if (difference > 0) {
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+      if (days > 0) return `${days}d ${hours}h left`;
+      if (hours > 0) return `${hours}h ${minutes}m left`;
+      return `${minutes}m left`;
+    }
+    return 'Expired';
   };
 
-  if (loading) {
-    return (
-      <div className={`animate-pulse ${className}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(maxDeals)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (promotions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={className}>
-      {showTitle && (
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">🔥 Hot Deals & Promotions</h2>
-          <p className="text-gray-600">Limited time offers on your favorite cleaning supplies</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {promotions.map((promotion) => {
-          const timeRemaining = promotion.end_date ? getTimeRemaining(promotion.end_date) : null;
-          
-          return (
-            <div
-              key={promotion.id}
-              className="bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-white bg-opacity-20 rounded-lg p-2">
-                  {getPromotionIcon(promotion.type)}
-                </div>
-                {timeRemaining && (
-                  <div className="flex items-center text-xs bg-black bg-opacity-20 rounded-full px-2 py-1">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {timeRemaining}
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <h3 className="text-xl font-bold mb-1">
-                  {getPromotionDisplay(promotion)}
-                </h3>
-                <p className="text-sm text-white text-opacity-90 line-clamp-2">
-                  {promotion.description}
-                </p>
-              </div>
-
-              {promotion.code && (
-                <div className="mb-4">
-                  <div className="bg-white bg-opacity-20 rounded border-2 border-dashed border-white border-opacity-30 p-2 text-center">
-                    <p className="text-xs text-white text-opacity-80 mb-1">Promo Code</p>
-                    <p className="font-mono font-bold text-sm">{promotion.code}</p>
-                  </div>
-                </div>
-              )}
-
-              {promotion.minimum_order_amount > 0 && (
-                <p className="text-xs text-white text-opacity-80 mb-4">
-                  Min. order: ${promotion.minimum_order_amount}
-                </p>
-              )}
-
-              <Link 
-                to={promotion.applies_to === 'all' ? '/products' : '/products'}
-                className="w-full bg-white text-red-600 rounded-lg py-2 px-4 text-sm font-semibold hover:bg-gray-100 transition-colors flex items-center justify-center"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Shop Now
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-
-      {promotions.length >= maxDeals && (
-        <div className="text-center mt-8">
-          <Link
-            to="/promotions"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            View All Promotions
-            <Tag className="h-4 w-4 ml-2" />
-          </Link>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Full promotions page component
-export default function PromotionsPage() {
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAllPromotions();
-  }, []);
-
-  const fetchAllPromotions = async () => {
+  const handleAddToCart = async (product: Product) => {
     try {
-      const now = new Date().toISOString();
-      
-      const { data, error } = await supabase
-        .from('promotions')
-        .select('*')
-        .eq('is_active', true)
-        .lte('start_date', now)
-        .or(`end_date.is.null,end_date.gte.${now}`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPromotions(data || []);
+      const cartProduct = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image_url: product.images?.[0] || '',
+        sku: product.sku,
+        description: product.description,
+        category: product.category?.name || '',
+        in_stock: product.stock_quantity > 0,
+        stock_count: product.stock_quantity
+      };
+      await addToCart(cartProduct, 1);
     } catch (error) {
-      console.error('Error fetching promotions:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error adding to cart:', error);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-96 mx-auto mb-8"></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-gray-200 rounded-xl h-64"></div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // If no active promotions or products, don't render the section
+  if (activePromotions.length === 0 && promotionalProducts.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <section className="bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            🎉 Current Promotions & Deals
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Don't miss out on these amazing offers! Save big on professional cleaning supplies.
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center justify-center gap-2 mb-4"
+          >
+            <Flame className="h-8 w-8 text-red-500 animate-pulse" />
+            <h2 className="text-4xl font-bold text-gray-900">🔥 Hot Deals</h2>
+            <Flame className="h-8 w-8 text-red-500 animate-pulse" />
+          </motion.div>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Limited-time offers you don't want to miss! Grab these amazing deals before they're gone.
           </p>
         </div>
 
-        {promotions.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Tag className="h-12 w-12 text-gray-400" />
+        {/* Active Promotions */}
+        {activePromotions.length > 0 && (
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <Tag className="h-6 w-6 text-orange-500" />
+              Active Promotions
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activePromotions.map((promotion, index) => (
+                <motion.div
+                  key={promotion.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white rounded-2xl shadow-lg border-2 border-orange-200 overflow-hidden hover:shadow-xl transition-shadow"
+                >
+                  <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-2xl font-bold">
+                        {getDiscountText(promotion)}
+                      </span>
+                      <div className="flex items-center gap-1 text-sm bg-white/20 rounded-full px-2 py-1">
+                        <Clock className="h-3 w-3" />
+                        {getTimeRemaining(promotion.end_date)}
+                      </div>
+                    </div>
+                    <h4 className="text-lg font-semibold">{promotion.title}</h4>
+                  </div>
+                  
+                  <div className="p-4">
+                    <p className="text-gray-600 text-sm mb-4">
+                      {promotion.description}
+                    </p>
+                    
+                    {promotion.code && (
+                      <div className="bg-gray-100 rounded-lg p-3 mb-4">
+                        <p className="text-xs text-gray-500 mb-1">Use promo code:</p>
+                        <div className="flex items-center justify-between">
+                          <code className="text-lg font-bold text-gray-900">
+                            {promotion.code}
+                          </code>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(promotion.code)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {promotion.minimum_order_amount > 0 && (
+                      <p className="text-xs text-gray-500">
+                        *Minimum order: ${promotion.minimum_order_amount}
+                      </p>
+                    )}
+                    
+                    <div className="mt-4">
+                      <Link
+                        to="/products"
+                        className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-800 font-medium"
+                      >
+                        Shop Now
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No Active Promotions</h3>
-            <p className="text-gray-500 mb-6">Check back soon for exciting deals and offers!</p>
-            <Link
-              to="/products"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Browse All Products
-              <ShoppingCart className="h-4 w-4 ml-2" />
-            </Link>
           </div>
-        ) : (
-          <HotDeals showTitle={false} maxDeals={promotions.length} />
+        )}
+
+        {/* Promotional Products */}
+        {promotionalProducts.length > 0 && (
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <Star className="h-6 w-6 text-yellow-500" />
+              Products on Sale
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {promotionalProducts.map((product, index) => {
+                const discountPercentage = product.compare_at_price 
+                  ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
+                  : 0;
+                
+                return (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
+                  >
+                    <div className="relative">
+                      <ImageWithFallback
+                        src={product.images?.[0] || ''}
+                        alt={product.name}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {discountPercentage > 0 && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold">
+                          -{discountPercentage}%
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded-md text-xs font-bold animate-pulse">
+                        HOT
+                      </div>
+                    </div>
+                    
+                    <div className="p-4">
+                      <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                        <Link to={`/products/${product.id}`} className="hover:text-blue-600">
+                          {product.name}
+                        </Link>
+                      </h4>
+                      
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xl font-bold text-gray-900">
+                          ${product.price.toFixed(2)}
+                        </span>
+                        {product.compare_at_price && (
+                          <span className="text-sm text-gray-500 line-through">
+                            ${product.compare_at_price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 mb-3">
+                        {product.stock_quantity} in stock
+                      </p>
+                      
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        disabled={product.stock_quantity === 0}
+                        className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        <ShoppingCart className="h-4 w-4" />
+                        {product.stock_quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* View All Promotions Button */}
+        {showViewAll && activePromotions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <Link
+              to="/products?on_sale=true"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg hover:shadow-xl"
+            >
+              View All Sale Items
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </motion.div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

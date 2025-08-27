@@ -19,6 +19,7 @@ import OrderHistory from '../pages/customer/OrderHistory';
 // Admin Pages
 import AdminDashboard from '../pages/admin/Dashboard';
 import AdminProducts from '../pages/admin/Products';
+import AdminProductEditor from '../pages/admin/ProductEditor';
 import AdminPromotions from '../pages/admin/Promotions';
 import AdminOrders from '../pages/admin/Orders';
 import AdminUsers from '../pages/admin/Users';
@@ -124,6 +125,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}>
             <AdminProducts />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/products/:id" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'manager', 'staff']}>
+            <AdminProductEditor />
           </ProtectedRoute>
         } 
       />

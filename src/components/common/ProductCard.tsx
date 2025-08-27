@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Star, Eye, Heart, Percent, Loader2, AlertTriangle, Package } from 'lucide-react';
+import { ShoppingCart, Star, Eye, Heart, Percent, Loader2, AlertTriangle, Package, Edit, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useCart } from '../../contexts/CartContext';
 import { useFavourites } from '../../contexts/FavouritesContext';
@@ -33,9 +33,13 @@ interface ProductCardProps {
   product: Product;
   featured?: boolean;
   className?: string;
+  isAdmin?: boolean;
+  onEdit?: (product: Product) => void;
+  onDelete?: (product: Product) => void;
+  linkTo?: string; // optional custom link
 }
 
-export default function ProductCard({ product, featured = false, className = '' }: ProductCardProps) {
+export default function ProductCard({ product, featured = false, className = '', isAdmin = false, onEdit, onDelete, linkTo }: ProductCardProps) {
   const { addToCart } = useCart();
   const { addToFavourites, removeFromFavourites, isFavourite } = useFavourites();
   const [isLoading, setIsLoading] = useState(false);
@@ -131,7 +135,7 @@ export default function ProductCard({ product, featured = false, className = '' 
       transition={{ duration: 0.3 }}
       className={`group relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 flex flex-col h-full ${className}`}
     >
-      <Link to={`/products/${product.id}`} className="flex flex-col h-full">
+  <Link to={linkTo || `/products/${product.id}`} className="flex flex-col h-full">
         {/* Product Image - Fixed height */}
         <div className="relative overflow-hidden bg-gray-50 flex-shrink-0">
           <ImageWithFallback
@@ -271,33 +275,60 @@ export default function ProductCard({ product, featured = false, className = '' 
             )}
           </div>
 
-          {/* Add to Cart Button - Fixed at bottom */}
+          {/* Action Buttons - Changes based on admin mode */}
           <div className="flex justify-center flex-shrink-0">
-            <button
-              onClick={handleAddToCart}
-              disabled={!inStock || isLoading}
-              className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                !inStock || isLoading
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : stockInfo.urgent
-                  ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 animate-pulse'
-                  : 'bg-[#4682B4] text-white hover:bg-[#2C3E50]'
-              }`}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <ShoppingCart className="h-4 w-4 mr-2" />
-              )}
-              {!inStock 
-                ? 'Out of Stock' 
-                : isLoading 
-                ? 'Adding...' 
-                : stockInfo.urgent 
-                ? 'Buy Now!' 
-                : 'Add to Cart'
-              }
-            </button>
+            {isAdmin ? (
+              <div className="flex space-x-2 w-full">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onEdit?.(product);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-[#4682B4] to-[#87CEEB] text-white hover:from-[#2C3E50] hover:to-[#4682B4] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete?.(product);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleAddToCart}
+                disabled={!inStock || isLoading}
+                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
+                  !inStock || isLoading
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : stockInfo.urgent
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 animate-pulse'
+                    : 'bg-[#4682B4] text-white hover:bg-[#2C3E50]'
+                }`}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                )}
+                {!inStock 
+                  ? 'Out of Stock' 
+                  : isLoading 
+                  ? 'Adding...' 
+                  : stockInfo.urgent 
+                  ? 'Buy Now!' 
+                  : 'Add to Cart'
+                }
+              </button>
+            )}
           </div>
 
           {/* Color/Size Variants Preview */}

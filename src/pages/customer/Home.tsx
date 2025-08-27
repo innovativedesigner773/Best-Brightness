@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Truck, CheckCircle, Headphones, Gift, Star, Sparkles, AlertCircle, Clock, Zap, Users } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import ProductCard from '../../components/common/ProductCard';
-import { HotDeals } from '../../components/customer/HotDeals';
+import { supabase } from '../../lib/supabase';
 import { projectId } from '../../utils/supabase/info';
 import { motion } from 'framer-motion';
 
@@ -170,6 +170,8 @@ const categories = [
 export default function Home() {
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [errorDetails, setErrorDetails] = useState<string>('');
+  const [realFeaturedProducts, setRealFeaturedProducts] = useState<any[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
 
   useEffect(() => {
     const checkServerStatus = async () => {
@@ -196,12 +198,65 @@ export default function Home() {
       } catch (error) {
         console.error('Server connection failed:', error);
         setServerStatus('offline');
-        setErrorDetails(`Connection error: ${(error as Error).message}`);
+        setErrorDetails(`Connection error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     };
 
     checkServerStatus();
+    fetchFeaturedProducts();
   }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      setFeaturedLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
+        .eq('is_active', true)
+        .eq('is_featured', true)
+        .gt('stock_quantity', 0)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      
+      // Transform the data to match the expected format
+      const transformedProducts = (data || []).map(product => ({
+        id: product.id,
+        name: product.name,
+        brand: product.brand || 'Best Brightness',
+        price: product.price,
+        original_price: product.compare_at_price,
+        discount: product.compare_at_price ? 
+          Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100) : 
+          null,
+        category: product.categories?.name || 'General',
+        image_url: product.images?.[0] || '/api/placeholder/400/400',
+        rating: 4.5, // You can add a reviews table later
+        reviews: Math.floor(Math.random() * 200) + 50, // Placeholder
+        featured: true,
+        description: product.short_description || product.description || 'High-quality cleaning product',
+        in_stock: product.stock_quantity > 0,
+        stock_count: product.stock_quantity,
+        promotion_badge: product.compare_at_price ? 
+          `${Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}% OFF` : 
+          null
+      }));
+
+      setRealFeaturedProducts(transformedProducts);
+    } catch (err) {
+      console.error('Failed to fetch featured products:', err);
+      // Fallback to original hardcoded products if database fetch fails
+      setRealFeaturedProducts([]);
+    } finally {
+      setFeaturedLoading(false);
+    }
+  };
 
   // Filter active promotions (not expired)
   const activePromotions = promotions.filter(promo => 
@@ -363,11 +418,7 @@ export default function Home() {
       </section>
 
       {/* Hot Deals & Promotions Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <HotDeals showTitle={true} maxDeals={4} />
-        </div>
-      </section>
+      <PromotionsSection />
 
       {/* Featured Products */}
       <section className="py-16 bg-[#F8F9FA]">
@@ -389,23 +440,36 @@ export default function Home() {
           </motion.div>
          
           {/* Grid with equal height cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-            {featuredProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="h-full" // Ensure full height
-              >
-                <ProductCard 
-                  product={product} 
-                  featured 
-                  className="h-full flex flex-col" // Force equal height with flexbox
-                />
-              </motion.div>
-            ))}
-          </div>
+          {featuredLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((index) => (
+                <div key={index} className="bg-white rounded-lg shadow-lg p-6 animate-pulse">
+                  <div className="bg-gray-300 h-48 rounded-lg mb-4"></div>
+                  <div className="bg-gray-300 h-4 rounded mb-2"></div>
+                  <div className="bg-gray-300 h-4 rounded w-3/4 mb-2"></div>
+                  <div className="bg-gray-300 h-4 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+              {(realFeaturedProducts.length > 0 ? realFeaturedProducts : featuredProducts).map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  className="h-full" // Ensure full height
+                >
+                  <ProductCard 
+                    product={product} 
+                    featured 
+                    className="h-full flex flex-col" // Force equal height with flexbox
+                  />
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -524,3 +588,232 @@ export default function Home() {
     </div>
   );
 }
+
+// Promotions Section Component with real database integration
+const PromotionsSection: React.FC = () => {
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPromotions();
+  }, []);
+
+  const fetchPromotions = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('promotions')
+        .select(`
+          *,
+          promotion_products (
+            product_id
+          )
+        `)
+        .eq('is_active', true)
+        .gte('end_date', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setPromotions(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch promotions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTimeRemaining = (endDate: string) => {
+    const now = new Date().getTime();
+    const end = new Date(endDate).getTime();
+    const difference = end - now;
+
+    if (difference <= 0) return null;
+
+    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+
+    return { days, hours, minutes };
+  };
+
+  const formatDiscount = (type: string, value: number) => {
+    switch (type) {
+      case 'percentage':
+        return `${value}% OFF`;
+      case 'fixed':
+        return `R${value} OFF`;
+      case 'bogo':
+        return 'BUY 1 GET 1';
+      case 'free_shipping':
+        return 'FREE SHIPPING';
+      default:
+        return 'SPECIAL OFFER';
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gradient-to-br from-[#E74C3C] to-[#C0392B]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+            <p className="text-white mt-4">Loading hot deals...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16 bg-gradient-to-br from-[#E74C3C] to-[#C0392B]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-white mx-auto mb-4" />
+            <p className="text-white">Unable to load promotions at this time</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="relative py-16 overflow-hidden bg-gradient-to-br from-red-50 via-orange-50 to-red-100">
+      {/* Modern geometric background pattern */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23E74C3C' fill-opacity='0.05'%3E%3Cpath d='M0 0h40v40H0z'/%3E%3Cpath d='M0 0l40 40M40 0L0 40' stroke='%23E74C3C' stroke-width='0.5' stroke-opacity='0.1'/%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with consistent font styling */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center justify-center space-x-2 mb-6 bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+            <Zap className="h-5 w-5 animate-pulse" />
+            <span className="tracking-wide">HOT DEALS</span>
+            <Sparkles className="h-5 w-5 animate-pulse" />
+          </div>
+          
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+            🔥 Hot Deals & Promotions
+          </h2>
+          
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Limited time offers on your favorite cleaning supplies
+          </p>
+        </motion.div>
+
+        {promotions.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-center bg-white rounded-2xl p-12 shadow-xl border border-gray-200"
+          >
+            <Gift className="h-20 w-20 text-gray-400 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">No Active Promotions</h3>
+            <p className="text-gray-600 text-lg">Check back soon for amazing deals on cleaning supplies!</p>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {promotions.map((promotion, index) => {
+              const timeRemaining = getTimeRemaining(promotion.end_date);
+              
+              return (
+                <motion.div
+                  key={promotion.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="group relative bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100"
+                >
+                  {/* Promotion header with gradient */}
+                  <div className="relative bg-gradient-to-br from-red-500 via-red-600 to-orange-600 p-6">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12"></div>
+                    
+                    <div className="relative flex items-start justify-between mb-4">
+                      <span className="bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        {promotion.code || 'SPECIAL OFFER'}
+                      </span>
+                      
+                      {timeRemaining && (
+                        <div className="bg-black/20 backdrop-blur-sm rounded-lg px-3 py-2">
+                          <div className="flex items-center space-x-1 text-white text-sm">
+                            <Clock className="h-4 w-4" />
+                            <span className="font-mono font-bold">
+                              {timeRemaining.days}d {timeRemaining.hours}h {timeRemaining.minutes}m
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:scale-105 transition-transform leading-tight">
+                      {promotion.name}
+                    </h3>
+                    
+                    <div className="text-4xl font-black text-white drop-shadow-lg">
+                      {formatDiscount(promotion.type, promotion.value)}
+                    </div>
+                  </div>
+                  
+                  {/* Promotion content */}
+                  <div className="p-6">
+                    <p className="text-gray-600 mb-6 line-clamp-3 leading-relaxed">
+                      {promotion.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <Users className="h-4 w-4" />
+                        <span>Limited time</span>
+                      </div>
+                      
+                      <Link
+                        to="/products"
+                        className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-red-600 hover:to-orange-600 transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl group/btn"
+                      >
+                        <span>Shop Now</span>
+                        <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                  
+                  {/* Hover effect overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Call to action */}
+        {promotions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="text-center mt-12"
+          >
+            <Link
+              to="/products"
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-gray-900 to-gray-700 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-gray-800 hover:to-gray-600 transition-all duration-200 shadow-xl hover:shadow-2xl"
+            >
+              <span>View All Products</span>
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </motion.div>
+        )}
+      </div>
+    </section>
+  );
+};

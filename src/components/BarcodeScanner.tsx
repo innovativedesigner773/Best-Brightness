@@ -143,8 +143,11 @@ export function BarcodeScanner({ onProductScanned, onClose }: BarcodeScannerProp
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50">
+      {/* Glass overlay (stronger scrim) */}
+      <div className="absolute inset-0 bg-black/50 dark:bg-black/60 backdrop-blur-sm" />
+      <div className="relative flex items-center justify-center min-h-screen p-4">
+  <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-black/5 dark:border-white/10 shadow-2xl">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -312,6 +315,7 @@ export function BarcodeScanner({ onProductScanned, onClose }: BarcodeScannerProp
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
