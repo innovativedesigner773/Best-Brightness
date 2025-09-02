@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Scan, 
   ShoppingCart, 
@@ -19,59 +19,124 @@ import {
   X,
   Delete
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+
+type CartItem = {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  barcode: string;
+  quantity: number;
+  sku?: string;
+};
+
+type OnScreenKeyboardProps = {
+  onKeyPress: (key: string) => void;
+  onClose: () => void;
+  target: 'barcode' | 'customer' | 'payment' | 'manual';
+};
+
+type Customer = { name: string; email: string; points: number } | null;
 
 export default function EnhancedPOS() {
-  const [cartItems, setCartItems] = useState([]);
-  const [customer, setCustomer] = useState(null);
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [showKeyboard, setShowKeyboard] = useState(false);
-  const [keyboardTarget, setKeyboardTarget] = useState('');
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [activeInput, setActiveInput] = useState('');
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [customer, setCustomer] = useState<Customer>(null);
+  const [barcodeInput, setBarcodeInput] = useState<string>('');
+  const [customerSearch, setCustomerSearch] = useState<string>('');
+  const [showKeyboard, setShowKeyboard] = useState<boolean>(false);
+  const [keyboardTarget, setKeyboardTarget] = useState<'barcode' | 'customer' | 'payment' | 'manual'>('barcode');
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [showDiscountModal, setShowDiscountModal] = useState<boolean>(false);
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [activeInput, setActiveInput] = useState<string>('');
+  const [productsByBarcode, setProductsByBarcode] = useState<Record<string, any>>({});
+  const [productsLoading, setProductsLoading] = useState<boolean>(false);
+  const [productsError, setProductsError] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [changeDue, setChangeDue] = useState(0);
+  const [transactionId, setTransactionId] = useState('');
+  const [transactionDate, setTransactionDate] = useState<Date | null>(null);
+  const receiptRef = useRef<HTMLDivElement | null>(null);
 
-  // Sample products database
-  const products = {
-    '123456789': { name: 'Coca Cola 500ml', price: 15.99, category: 'Beverages' },
-    '987654321': { name: 'White Bread', price: 22.50, category: 'Bakery' },
-    '555666777': { name: 'Milk 1L', price: 18.75, category: 'Dairy' },
-    '111222333': { name: 'Apples 1kg', price: 35.00, category: 'Fresh Produce' },
-    '444555666': { name: 'Chicken Breast 1kg', price: 89.99, category: 'Meat' }
-  };
+  // Fetch products like the customer pages (active products)
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setProductsLoading(true);
+        setProductsError('');
+        const { data, error } = await supabase
+          .from('products')
+          .select(`
+            *,
+            category:categories(id, name, slug)
+          `)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const map: Record<string, any> = {};
+        (data || []).forEach((p: any) => {
+          if (p.barcode) {
+            map[p.barcode] = {
+              id: p.id,
+              name: p.name,
+              price: Number(p.price) || 0,
+              category: p.category?.name || 'General',
+              sku: p.sku,
+              barcode: p.barcode,
+            };
+          }
+        });
+        setProductsByBarcode(map);
+      } catch (err: any) {
+        console.error('Failed to load products for POS:', err);
+        setProductsError(err?.message || 'Failed to load products');
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Sample customers database
-  const customers = {
+  const customers: Record<string, { name: string; email: string; points: number }> = {
     '0821234567': { name: 'John Smith', email: 'john@email.com', points: 150 },
     '0739876543': { name: 'Sarah Johnson', email: 'sarah@email.com', points: 220 },
     'customer@demo.com': { name: 'Demo Customer', email: 'customer@demo.com', points: 500 }
   };
 
-  const handleBarcodeInput = (value) => {
-    const product = products[value];
+  const handleBarcodeInput = (value: string) => {
+    const product = productsByBarcode[value];
     if (product) {
-      const existingItem = cartItems.find(item => item.barcode === value);
+      const existingItem = cartItems.find((item) => item.barcode === value);
       if (existingItem) {
-        setCartItems(cartItems.map(item =>
+        setCartItems(cartItems.map((item) =>
           item.barcode === value 
             ? { ...item, quantity: item.quantity + 1 }
             : item
         ));
       } else {
-        setCartItems([...cartItems, {
+        const newItem: CartItem = {
+          id: Date.now(),
+          name: product.name,
+          price: Number(product.price) || 0,
+          category: product.category || 'General',
           barcode: value,
-          ...product,
           quantity: 1,
-          id: Date.now()
-        }]);
+          sku: product.sku,
+        };
+        setCartItems([...cartItems, newItem]);
       }
       setBarcodeInput('');
     }
   };
 
-  const handleCustomerSearch = (query) => {
+  const handleCustomerSearch = (query: string) => {
     const foundCustomer = customers[query];
     if (foundCustomer) {
       setCustomer(foundCustomer);
@@ -79,25 +144,57 @@ export default function EnhancedPOS() {
     }
   };
 
-  const updateQuantity = (id, change) => {
-    setCartItems(cartItems.map(item => {
-      if (item.id === id) {
-        const newQuantity = item.quantity + change;
-        return newQuantity <= 0 ? null : { ...item, quantity: newQuantity };
-      }
-      return item;
-    }).filter(Boolean));
+  const updateQuantity = (id: number, change: number) => {
+    const updated = cartItems
+      .map((item) => {
+        if (item.id === id) {
+          const newQuantity = item.quantity + change;
+          return newQuantity <= 0 ? null : { ...item, quantity: newQuantity };
+        }
+        return item;
+      })
+      .filter((i): i is CartItem => i !== null);
+    setCartItems(updated);
   };
 
-  const removeItem = (id) => {
+  const removeItem = (id: number) => {
     setCartItems(cartItems.filter(item => item.id !== id));
   };
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cartItems.reduce((sum: number, item: CartItem) => sum + (item.price * item.quantity), 0);
   const discountAmount = subtotal * (discountPercent / 100);
   const total = subtotal - discountAmount;
 
-  const OnScreenKeyboard = ({ onKeyPress, onClose, target }) => {
+  const handleConfirmPayment = () => {
+    const amountNumber = Number(paymentAmount || '0');
+    const safeAmount = isNaN(amountNumber) ? 0 : amountNumber;
+    const computedChange = paymentMethod === 'cash' ? Math.max(safeAmount - total, 0) : 0;
+    setChangeDue(Number(computedChange.toFixed(2)));
+    setTransactionId(`TX-${Date.now()}`);
+    setTransactionDate(new Date());
+    setShowPaymentModal(false);
+    setShowReceipt(true);
+  };
+
+  const handlePrintReceipt = () => {
+    const content = receiptRef.current?.innerHTML || '';
+    const printWindow = window.open('', '_blank', 'width=360,height=640');
+    if (!printWindow) return;
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html><head><title>Receipt</title>
+      <style>
+        body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; padding: 16px; }
+        .receipt { width: 280px; margin: 0 auto; }
+        .center { text-align: center; }
+        .hr { border-top: 1px dashed #999; margin: 8px 0; }
+        .row { display: flex; justify-content: space-between; }
+        .small { font-size: 12px; color: #444; }
+      </style>
+    </head><body onload="window.print();window.close()"><div class="receipt">${content}</div></body></html>`);
+    printWindow.document.close();
+  };
+
+  const OnScreenKeyboard = ({ onKeyPress, onClose, target }: OnScreenKeyboardProps) => {
     const keys = [
       ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
       ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -172,7 +269,7 @@ export default function EnhancedPOS() {
     );
   };
 
-  const handleKeyPress = (key) => {
+  const handleKeyPress = (key: string) => {
     if (key === 'BACKSPACE') {
       if (keyboardTarget === 'barcode') {
         setBarcodeInput(prev => prev.slice(0, -1));
@@ -188,7 +285,7 @@ export default function EnhancedPOS() {
         handleCustomerSearch(customerSearch);
       }
       setShowKeyboard(false);
-      setKeyboardTarget('');
+      setKeyboardTarget('barcode');
     } else if (key === 'SPACE') {
       if (keyboardTarget === 'customer') {
         setCustomerSearch(prev => prev + ' ');
@@ -204,7 +301,7 @@ export default function EnhancedPOS() {
     }
   };
 
-  const openKeyboard = (target) => {
+  const openKeyboard = (target: 'barcode' | 'customer' | 'payment' | 'manual') => {
     setKeyboardTarget(target);
     setShowKeyboard(true);
   };
@@ -257,16 +354,23 @@ export default function EnhancedPOS() {
               
               {/* Quick Product Buttons */}
               <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
-                {Object.entries(products).map(([barcode, product]) => (
-                  <button
-                    key={barcode}
-                    onClick={() => handleBarcodeInput(barcode)}
-                    className="p-4 bg-gradient-to-br from-[#4682B4]/10 to-[#87CEEB]/20 rounded-xl hover:from-[#4682B4]/20 hover:to-[#87CEEB]/30 transition-all duration-300 border border-[#4682B4]/20 hover:border-[#4682B4]/40"
-                  >
-                    <div className="text-sm font-semibold text-[#2C3E50]">{product.name}</div>
-                    <div className="text-[#4682B4] font-bold">R{product.price}</div>
-                  </button>
-                ))}
+                {productsLoading && (
+                  <div className="col-span-5 text-center text-[#2C3E50]/70">Loading products…</div>
+                )}
+                {!productsLoading && productsError && (
+                  <div className="col-span-5 text-center text-red-600">{productsError}</div>
+                )}
+                {!productsLoading && !productsError &&
+                  Object.entries(productsByBarcode).slice(0, 10).map(([barcode, product]: any) => (
+                    <button
+                      key={barcode}
+                      onClick={() => handleBarcodeInput(barcode)}
+                      className="p-4 bg-gradient-to-br from-[#4682B4]/10 to-[#87CEEB]/20 rounded-xl hover:from-[#4682B4]/20 hover:to-[#87CEEB]/30 transition-all duration-300 border border-[#4682B4]/20 hover:border-[#4682B4]/40"
+                    >
+                      <div className="text-sm font-semibold text-[#2C3E50]">{product.name}</div>
+                      <div className="text-[#4682B4] font-bold">R{product.price}</div>
+                    </button>
+                  ))}
               </div>
             </div>
 
@@ -412,7 +516,7 @@ export default function EnhancedPOS() {
               <div className="space-y-3">
                 <button
                   disabled={cartItems.length === 0}
-                  onClick={() => setShowPaymentModal(true)}
+                  onClick={() => { setPaymentMethod('cash'); setShowPaymentModal(true); }}
                   className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-4 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold flex items-center justify-center"
                 >
                   <DollarSign className="h-5 w-5 mr-2" />
@@ -420,6 +524,7 @@ export default function EnhancedPOS() {
                 </button>
                 <button
                   disabled={cartItems.length === 0}
+                  onClick={() => { setPaymentMethod('card'); setShowPaymentModal(true); }}
                   className="w-full bg-gradient-to-r from-[#4682B4] to-[#2C3E50] text-white py-4 px-4 rounded-xl hover:from-[#2C3E50] hover:to-[#1a252f] transition-all duration-300 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold flex items-center justify-center"
                 >
                   <CreditCard className="h-5 w-5 mr-2" />
@@ -429,7 +534,7 @@ export default function EnhancedPOS() {
 
               {/* Additional Actions */}
               <div className="mt-6 grid grid-cols-2 gap-3">
-                <button className="bg-[#87CEEB]/20 text-[#2C3E50] py-3 px-4 rounded-xl hover:bg-[#87CEEB]/30 transition-all duration-300 font-semibold flex items-center justify-center">
+                <button className="bg-[#87CEEB]/20 text-[#2C3E50] py-3 px-4 rounded-xl hover:bg-[#87CEEB]/30 transition-all duration-300 font-semibold flex items-center justify-center" onClick={handlePrintReceipt}>
                   <Receipt className="h-5 w-5 mr-2" />
                   Print
                 </button>
@@ -483,10 +588,149 @@ export default function EnhancedPOS() {
             onKeyPress={handleKeyPress}
             onClose={() => {
               setShowKeyboard(false);
-              setKeyboardTarget('');
+              setKeyboardTarget('barcode');
             }}
             target={keyboardTarget}
           />
+        )}
+
+        {/* Payment Modal (Dummy, non-persistent) */}
+        {showPaymentModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-[#2C3E50]">Enter Payment</h3>
+                <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#2C3E50]">Total Due</span>
+                  <span className="text-2xl font-bold text-[#2C3E50]">R{total.toFixed(2)}</span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button onClick={() => setPaymentMethod('cash')} className={`flex-1 px-4 py-3 rounded-xl border-2 ${paymentMethod === 'cash' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-[#2C3E50]'} font-semibold`}>Cash</button>
+                  <button onClick={() => setPaymentMethod('card')} className={`flex-1 px-4 py-3 rounded-xl border-2 ${paymentMethod === 'card' ? 'border-[#4682B4] bg-[#87CEEB]/20 text-[#2C3E50]' : 'border-gray-200 text-[#2C3E50]'} font-semibold`}>Card</button>
+                </div>
+
+                {paymentMethod === 'cash' && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">Amount Tendered</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="number"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder="Enter cash received"
+                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4682B4] focus:border-transparent"
+                        min="0"
+                        step="0.01"
+                      />
+                      <button onClick={() => openKeyboard('payment')} className="bg-[#4682B4] text-white px-4 py-3 rounded-xl hover:bg-[#2C3E50] transition-all duration-300">
+                        <Calculator className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'cash' && paymentAmount && Number(paymentAmount) >= 0 && (
+                  <div className="flex items-center justify-between text-[#2C3E50]">
+                    <span>Change (if any)</span>
+                    <span className="font-bold">R{Math.max(Number(paymentAmount || '0') - total, 0).toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex space-x-4 pt-2">
+                  <button onClick={() => setShowPaymentModal(false)} className="flex-1 bg-gray-200 text-[#2C3E50] py-3 px-4 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold">Cancel</button>
+                  <button onClick={handleConfirmPayment} className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold">Confirm</button>
+                </div>
+                <p className="text-xs text-[#2C3E50]/70">Note: This is a demo payment. No data will be saved.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Receipt Modal */}
+        {showReceipt && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-[#2C3E50]">Receipt</h3>
+                <button onClick={() => setShowReceipt(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div ref={receiptRef} className="text-sm text-[#2C3E50]">
+                <div className="text-center mb-2">
+                  <div className="font-extrabold">BEST BRIGHTNESS</div>
+                  <div className="small">Demo POS Receipt</div>
+                </div>
+                <div className="hr" />
+                <div className="flex justify-between text-xs"><span>ID</span><span>{transactionId}</span></div>
+                <div className="flex justify-between text-xs"><span>Date</span><span>{transactionDate ? transactionDate.toLocaleString() : ''}</span></div>
+                <div className="flex justify-between text-xs"><span>Cashier</span><span>Demo User</span></div>
+                <div className="hr" />
+                {cartItems.map((item) => (
+                  <div key={item.id}>
+                    <div className="flex justify-between"><span>{item.name} x{item.quantity}</span><span>R{(item.price * item.quantity).toFixed(2)}</span></div>
+                  </div>
+                ))}
+                <div className="hr" />
+                <div className="flex justify-between"><span>Subtotal</span><span>R{subtotal.toFixed(2)}</span></div>
+                {discountPercent > 0 && (
+                  <div className="flex justify-between text-xs"><span>Discount {discountPercent}%</span><span>-R{discountAmount.toFixed(2)}</span></div>
+                )}
+                <div className="flex justify-between font-bold"><span>Total</span><span>R{total.toFixed(2)}</span></div>
+                <div className="flex justify-between text-xs"><span>Method</span><span>{paymentMethod.toUpperCase()}</span></div>
+                {paymentMethod === 'cash' && (
+                  <>
+                    <div className="flex justify-between text-xs"><span>Amount Tendered</span><span>R{Number(paymentAmount || '0').toFixed(2)}</span></div>
+                    <div className="flex justify-between text-xs"><span>Change</span><span>R{changeDue.toFixed(2)}</span></div>
+                  </>
+                )}
+                <div className="hr" />
+                <div className="text-center text-xs">Thank you for shopping!</div>
+              </div>
+
+              <div className="mt-4 flex space-x-3">
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { /* small delay for UI */ }, 0); window.setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={handlePrintReceipt} className="flex-1 bg-[#4682B4] text-white py-2 rounded-xl hover:bg-[#2C3E50] transition-all duration-300 font-semibold flex items-center justify-center">
+                  <Printer className="h-5 w-5 mr-2" />
+                  Print
+                </button>
+                <button onClick={() => { setShowReceipt(false); setCartItems([]); setPaymentAmount(''); setPaymentMethod('cash'); }} className="flex-1 bg-gray-200 text-[#2C3E50] py-2 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold">Done</button>
+              </div>
+              <p className="mt-2 text-xs text-[#2C3E50]/70">This is a demo receipt. No data has been saved.</p>
+            </div>
+          </div>
         )}
       </div>
     </div>
