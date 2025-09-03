@@ -30,6 +30,7 @@ export default function ServerStatusBanner() {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
         },
       });
 

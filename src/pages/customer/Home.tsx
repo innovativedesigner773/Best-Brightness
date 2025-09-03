@@ -227,7 +227,8 @@ export default function Home() {
         const response = await fetch(`${serverUrl}/health`, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`
           }
         });
 

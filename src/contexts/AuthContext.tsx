@@ -132,74 +132,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        console.log('🔄 Initializing auth...');
-        
-        // Clear any existing auth storage to ensure clean state
-        console.log('🧹 Clearing auth storage for fresh start...');
-        
-        // Clear all possible auth storage keys
-        const keysToRemove = [
-          'best-brightness-auth',
-          'supabase.auth.token',
-          'sb-yusvpxltvvlhubwqeuzi-auth-token',
-          'sb-auth-token'
-        ];
-        
-        keysToRemove.forEach(key => {
-          localStorage.removeItem(key);
-          sessionStorage.removeItem(key);
-        });
-        
-        // Clear any Supabase-related storage with dynamic project ID
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('supabase') || key.includes('auth') || key.includes('yusvpxltvvlhubwqeuzi')) {
-            localStorage.removeItem(key);
-          }
-        });
-        
-        Object.keys(sessionStorage).forEach(key => {
-          if (key.includes('supabase') || key.includes('auth') || key.includes('yusvpxltvvlhubwqeuzi')) {
-            sessionStorage.removeItem(key);
-          }
-        });
-        
-        // Force clear any existing sessions to require fresh sign-in
-        console.log('🧹 Clearing any existing sessions to ensure fresh sign-in...');
-        await supabase.auth.signOut();
-        
-        // Always start with no session - require fresh sign-in
+        console.log('🔄 Initializing auth (restoring existing session if present)...');
+        const { data: { session } } = await supabase.auth.getSession();
+
         if (mounted) {
-          console.log('✅ Session cleared - requiring fresh sign-in');
-          setAuthState({
-            user: null,
-            userProfile: null,
-            profile: null,
-            session: null,
-            loading: false,
-          });
+          if (session?.user) {
+            const profile = await fetchUserProfile(session.user.id);
+            setAuthState({
+              user: session.user,
+              userProfile: profile,
+              profile: profile,
+              session,
+              loading: false,
+            });
+          } else {
+            setAuthState(prev => ({ ...prev, loading: false }));
+          }
         }
       } catch (error) {
         console.error('❌ Error initializing auth:', error);
         if (mounted) {
-          setAuthState({
-            user: null,
-            userProfile: null,
-            profile: null,
-            session: null,
-            loading: false,
-          });
+          setAuthState(prev => ({ ...prev, loading: false }));
         }
       }
-    };    initializeAuth();
-
-    // Add window beforeunload listener to ensure clean state on refresh
-    const handleBeforeUnload = () => {
-      console.log('🔄 Page unloading - clearing auth state...');
-      localStorage.removeItem('best-brightness-auth');
-      sessionStorage.removeItem('best-brightness-auth');
     };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -266,7 +224,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 

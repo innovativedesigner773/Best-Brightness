@@ -8,24 +8,24 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Promotion {
-  id: string;
-  title: string;
-  description: string;
-  code: string;
-  discount_type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
-  discount_value: number;
-  minimum_order_amount: number;
-  maximum_discount_amount?: number;
-  start_date: string;
-  end_date: string;
-  is_active: boolean;
-  usage_limit?: number;
-  current_usage_count: number;
-  usage_limit_per_customer: number;
-  applies_to: 'all' | 'specific_products' | 'specific_categories';
-  conditions: any;
-  created_at: string;
-  updated_at: string;
+	id: string;
+	name: string;
+	description: string;
+	code: string;
+	type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
+	value: number;
+	minimum_order_amount: number;
+	maximum_discount_amount?: number;
+	start_date: string;
+	end_date: string;
+	is_active: boolean;
+	usage_limit?: number;
+	current_usage_count: number;
+	usage_limit_per_customer: number;
+	applies_to: 'all' | 'specific_products' | 'specific_categories';
+	conditions: any;
+	created_at: string;
+	updated_at: string;
 }
 
 interface Category {
@@ -150,13 +150,13 @@ export function PromotionsManagement() {
     try {
       console.log('💾 Saving promotion...', formData);
 
-      // Prepare promotion data
+      // Prepare promotion data mapped to DB schema
       const promotionData = {
-        title: formData.title,
+        name: formData.title,
         description: formData.description,
         code: formData.code || null,
-        discount_type: formData.discount_type,
-        discount_value: parseFloat(formData.discount_value),
+        type: formData.discount_type,
+        value: parseFloat(formData.discount_value),
         minimum_order_amount: parseFloat(formData.minimum_order_amount) || 0,
         maximum_discount_amount: formData.maximum_discount_amount ? parseFloat(formData.maximum_discount_amount) : null,
         start_date: formData.start_date,
@@ -250,11 +250,11 @@ export function PromotionsManagement() {
   const handleEdit = (promotion: Promotion) => {
     setEditingPromotion(promotion);
     setFormData({
-      title: promotion.title,
+      title: promotion.name,
       description: promotion.description,
       code: promotion.code || '',
-      discount_type: promotion.discount_type,
-      discount_value: promotion.discount_value.toString(),
+      discount_type: promotion.type,
+      discount_value: promotion.value.toString(),
       minimum_order_amount: promotion.minimum_order_amount.toString(),
       maximum_discount_amount: promotion.maximum_discount_amount?.toString() || '',
       start_date: promotion.start_date.split('T')[0],
@@ -326,11 +326,11 @@ export function PromotionsManagement() {
   };
 
   const getDiscountText = (promotion: Promotion) => {
-    switch (promotion.discount_type) {
+    switch (promotion.type) {
       case 'percentage':
-        return `${promotion.discount_value}% OFF`;
+        return `${promotion.value}% OFF`;
       case 'fixed_amount':
-        return `$${promotion.discount_value} OFF`;
+        return `$${promotion.value} OFF`;
       case 'free_shipping':
         return 'FREE SHIPPING';
       case 'buy_x_get_y':
@@ -453,7 +453,7 @@ export function PromotionsManagement() {
                 <p className="text-sm font-medium text-gray-500">Avg. Discount</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {promotions.length > 0 
-                    ? Math.round(promotions.reduce((sum, p) => sum + (p.discount_type === 'percentage' ? p.discount_value : 0), 0) / promotions.filter(p => p.discount_type === 'percentage').length || 0)
+                    ? Math.round(promotions.reduce((sum, p) => sum + (p.type === 'percentage' ? p.value : 0), 0) / promotions.filter(p => p.type === 'percentage').length || 0)
                     : 0}%
                 </p>
               </div>
@@ -793,7 +793,7 @@ export function PromotionsManagement() {
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <CardTitle className="text-lg">{promotion.title}</CardTitle>
+                  <CardTitle className="text-lg">{promotion.name}</CardTitle>
                   {promotion.code && (
                     <div className="mt-1">
                       <Badge variant="outline" className="text-xs">
