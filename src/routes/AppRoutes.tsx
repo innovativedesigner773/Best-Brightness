@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 // Pages - lazy loaded to reduce bundle size
@@ -98,7 +99,7 @@ export default function AppRoutes() {
         path="/cashier" 
         element={
           <ProtectedRoute allowedRoles={['cashier', 'staff', 'manager', 'admin']}>
-            <CashierDashboard />
+            <Navigate to="/cashier/pos" replace />
           </ProtectedRoute>
         } 
       />

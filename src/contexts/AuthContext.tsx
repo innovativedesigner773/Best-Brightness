@@ -67,6 +67,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading: true,
   });
 
+  // Local cache helpers for user profile to improve UX on slow networks
+  const getProfileCacheKey = (userId: string) => `bb:profile:${userId}`;
+  const loadProfileFromCache = (userId: string): UserProfile | null => {
+    try {
+      const raw = window.localStorage.getItem(getProfileCacheKey(userId));
+      return raw ? (JSON.parse(raw) as UserProfile) : null;
+    } catch {
+      return null;
+    }
+  };
+  const saveProfileToCache = (profile: UserProfile | null) => {
+    try {
+      if (profile) {
+        window.localStorage.setItem(getProfileCacheKey(profile.id), JSON.stringify(profile));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   // Monitor auth state changes for debugging
   useEffect(() => {
     console.log('🎯 AuthState Updated:', {
@@ -95,11 +115,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       console.log('✅ User profile fetched:', data);
-      return data as UserProfile;
+      const profile = data as UserProfile;
+      saveProfileToCache(profile);
+      return profile;
     } catch (error) {
       console.error('❌ Unexpected error fetching user profile:', error);
       return null;
     }
+  };
+
+  // Background retry for profile fetch with exponential backoff
+  const fetchProfileWithRetry = async (userId: string, maxAttempts: number = 3) => {
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      const profile = await fetchUserProfile(userId);
+      if (profile) {
+        setAuthState(prev => ({ ...prev, userProfile: profile, profile }));
+        return profile;
+      }
+      attempt += 1;
+      const delayMs = Math.min(8000, 1000 * Math.pow(2, attempt));
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+    return null;
   };
 
   // Refresh user profile
@@ -137,14 +175,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (mounted) {
           if (session?.user) {
-            const profile = await fetchUserProfile(session.user.id);
-            setAuthState({
+            // Use cached profile immediately to avoid null during render
+            const cached = loadProfileFromCache(session.user.id);
+            setAuthState(prev => ({
+              ...prev,
               user: session.user,
-              userProfile: profile,
-              profile: profile,
+              userProfile: cached,
+              profile: cached,
               session,
               loading: false,
-            });
+            }));
+            // Refresh profile in background with retries
+            fetchProfileWithRetry(session.user.id);
           } else {
             setAuthState(prev => ({ ...prev, loading: false }));
           }
@@ -174,32 +216,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             loading: authState.loading
           });
           
-          // Fetch user profile with timeout
-          const profilePromise = fetchUserProfile(session.user.id);
-          const timeoutPromise = new Promise<null>((resolve) => {
-            setTimeout(() => {
-              console.log('⏰ Profile fetch timeout, continuing without profile');
-              resolve(null);
-            }, 3000); // 3 second timeout
-          });
-          
-          const profile = await Promise.race([profilePromise, timeoutPromise]);
-          console.log('📝 Profile fetched, updating auth state...', { profile });
-          
-          const newState = {
+          // Set immediate state using cache and mark loading false
+          const cached = loadProfileFromCache(session.user.id);
+          setAuthState({
             user: session.user,
-            userProfile: profile,
-            profile: profile, // Set both for backwards compatibility
+            userProfile: cached,
+            profile: cached,
             session,
             loading: false,
-          };
-          
-          console.log('🔄 Setting new auth state:', newState);
-          
-          // Force state update
-          setAuthState(newState);
+          });
 
-          console.log('✅ Auth state updated with user and profile');
+          // Fetch profile in background with longer timeout and retries
+          fetchProfileWithRetry(session.user.id);
 
           // Update last login
           await updateLastLogin(session.user.id);

@@ -28,7 +28,7 @@ export const roleConfigs: Record<UserRole, RoleConfig> = {
     description: 'Browse and purchase cleaning supplies'
   },
   cashier: {
-    defaultPage: '/cashier',
+    defaultPage: '/cashier/pos',
     allowedPages: [
       '/',
       '/products',
@@ -37,7 +37,7 @@ export const roleConfigs: Record<UserRole, RoleConfig> = {
       '/cashier/*',
       '/profile'
     ],
-    redirectAfterLogin: '/cashier',
+    redirectAfterLogin: '/cashier/pos',
     displayName: 'Cashier',
     description: 'Process customer transactions'
   },
@@ -268,7 +268,7 @@ export function getNavigationForRole(role: string): Array<{
     case 'cashier':
       return [
         ...baseNavigation,
-        { label: 'POS System', path: '/cashier', icon: 'CreditCard' },
+        { label: 'POS System', path: '/cashier/pos', icon: 'CreditCard' },
         { label: 'Dashboard', path: '/cashier', icon: 'BarChart3' },
         { label: 'Profile', path: '/profile', icon: 'User' }
       ];
@@ -276,7 +276,7 @@ export function getNavigationForRole(role: string): Array<{
     case 'staff':
       return [
         ...baseNavigation,
-        { label: 'POS System', path: '/cashier', icon: 'CreditCard' },
+        { label: 'POS System', path: '/cashier/pos', icon: 'CreditCard' },
         { 
           label: 'Management', 
           path: '/admin', 
@@ -292,7 +292,7 @@ export function getNavigationForRole(role: string): Array<{
     case 'manager':
       return [
         ...baseNavigation,
-        { label: 'POS System', path: '/cashier', icon: 'CreditCard' },
+        { label: 'POS System', path: '/cashier/pos', icon: 'CreditCard' },
         { 
           label: 'Management', 
           path: '/admin', 
@@ -311,7 +311,7 @@ export function getNavigationForRole(role: string): Array<{
     case 'admin':
       return [
         ...baseNavigation,
-        { label: 'POS System', path: '/cashier', icon: 'CreditCard' },
+        { label: 'POS System', path: '/cashier/pos', icon: 'CreditCard' },
         { 
           label: 'Administration', 
           path: '/admin', 

@@ -75,20 +75,20 @@ export default function App() {
   console.log('🚀 App Component Mounting');
   
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <OfflineProvider>
-            <AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <OfflineProvider>
+          <AuthProvider>
+            <ErrorBoundary>
               <CartProvider>
                 <FavouritesProvider>
                   <AppContent />
                 </FavouritesProvider>
               </CartProvider>
-            </AuthProvider>
-          </OfflineProvider>
-        </Router>
-      </QueryClientProvider>
-    </ErrorBoundary>
+            </ErrorBoundary>
+          </AuthProvider>
+        </OfflineProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
