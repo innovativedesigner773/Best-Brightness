@@ -20,6 +20,7 @@ import {
   Delete
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { BrowserMultiFormatReader, Result } from '@zxing/browser';
 
 type CartItem = {
   id: number;
@@ -60,6 +61,10 @@ export default function EnhancedPOS() {
   const [transactionId, setTransactionId] = useState('');
   const [transactionDate, setTransactionDate] = useState<Date | null>(null);
   const receiptRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const [scanning, setScanning] = useState<boolean>(false);
+  const lastScanRef = useRef<{ code: string; at: number } | null>(null);
 
   // Fetch products like the customer pages (active products)
   useEffect(() => {
@@ -102,6 +107,58 @@ export default function EnhancedPOS() {
 
     fetchProducts();
   }, []);
+
+  // Initialize / teardown camera scanner
+  useEffect(() => {
+    if (!scanning) {
+      // Stop scanner if running
+      if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+      }
+      return;
+    }
+
+    let mounted = true;
+    const reader = new BrowserMultiFormatReader();
+    codeReaderRef.current = reader;
+
+    const start = async () => {
+      try {
+        await reader.decodeFromVideoDevice(
+          undefined,
+          videoRef.current as HTMLVideoElement,
+          (result: Result | undefined, err) => {
+            if (!mounted) return;
+            if (result) {
+              const text = result.getText();
+              const now = Date.now();
+              // Debounce duplicate frames and very fast repeats
+              if (
+                !lastScanRef.current ||
+                lastScanRef.current.code !== text ||
+                now - lastScanRef.current.at > 800
+              ) {
+                lastScanRef.current = { code: text, at: now };
+                handleBarcodeInput(text);
+              }
+            }
+          }
+        );
+      } catch (e) {
+        console.error('Scanner init error', e);
+        setScanning(false);
+      }
+    };
+
+    start();
+
+    return () => {
+      mounted = false;
+      try {
+        reader.reset();
+      } catch {}
+    };
+  }, [scanning]);
 
   // Sample customers database
   const customers: Record<string, { name: string; email: string; points: number }> = {
@@ -349,6 +406,32 @@ export default function EnhancedPOS() {
                   >
                     <Calculator className="h-6 w-6" />
                   </button>
+                </div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                  <div className="md:col-span-2">
+                    <div className="relative w-full">
+                      <video ref={videoRef} className="w-full h-48 bg-gray-100 rounded-xl" muted playsInline />
+                      {!scanning && (
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-[#2C3E50]/70">Camera idle</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex md:flex-col gap-3 justify-center">
+                    <button
+                      onClick={() => setScanning(true)}
+                      className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-all duration-200 disabled:opacity-60"
+                      disabled={scanning}
+                    >
+                      Start Camera
+                    </button>
+                    <button
+                      onClick={() => setScanning(false)}
+                      className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 transition-all duration-200 disabled:opacity-60"
+                      disabled={!scanning}
+                    >
+                      Stop Camera
+                    </button>
+                  </div>
                 </div>
               </div>
               
