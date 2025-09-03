@@ -8,10 +8,10 @@ export const supabase = createClient(
   publicAnonKey,
   {
     auth: {
-      persistSession: false, // Disable session persistence to require fresh sign-in
+      persistSession: true, // Persist session so auth survives reloads and tab switches
       storageKey: 'best-brightness-auth',
       storage: window.localStorage,
-      autoRefreshToken: false, // Disable auto refresh since we're not persisting
+      autoRefreshToken: true, // Keep session fresh automatically
       detectSessionInUrl: true,
     },
     db: {
