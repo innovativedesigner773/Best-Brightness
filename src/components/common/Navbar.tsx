@@ -38,6 +38,7 @@ export default function Navbar() {
   const cashierLinks = [
     { to: '/cashier', label: 'Dashboard', icon: BarChart3 },
     { to: '/cashier/pos', label: 'POS System', icon: Settings },
+    { to: '/cashier/reports', label: 'Reports', icon: BarChart3 },
   ];
 
   // Get user display name with fallback

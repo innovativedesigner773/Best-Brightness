@@ -59,10 +59,10 @@ export default function CashierReports() {
       repeatCustomers: '42%'
     },
     topProducts: [
-      { name: 'Coca Cola 500ml', sold: 24, revenue: 'R383.76', growth: '+12%', category: 'Beverages' },
-      { name: 'White Bread', sold: 18, revenue: 'R405.00', growth: '+8%', category: 'Bakery' },
-      { name: 'Milk 1L', sold: 15, revenue: 'R281.25', growth: '+15%', category: 'Dairy' },
-      { name: 'Apples 1kg', sold: 12, revenue: 'R420.00', growth: '+5%', category: 'Fresh Produce' }
+      { name: 'All-Purpose Cleaner 500ml', sold: 24, revenue: 'R383.76', growth: '+12%', category: 'Surface Cleaners' },
+      { name: 'Toilet Paper 12-Pack', sold: 18, revenue: 'R405.00', growth: '+8%', category: 'Paper Products' },
+      { name: 'Dish Soap Concentrate 1L', sold: 15, revenue: 'R281.25', growth: '+15%', category: 'Kitchen Cleaners' },
+      { name: 'Microfiber Cloth Set', sold: 12, revenue: 'R420.00', growth: '+5%', category: 'Cleaning Tools' }
     ],
     hourlyData: [
       { hour: '09:00', sales: 850, transactions: 12 },
