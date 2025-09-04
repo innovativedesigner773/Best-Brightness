@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { BrowserMultiFormatReader, type Result } from '@zxing/browser';
+import CashierLayout from '../../components/cashier/CashierLayout';
 
 type CartItem = {
   id: number;
@@ -364,8 +365,9 @@ export default function EnhancedPOS() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#87CEEB]/20 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <CashierLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#87CEEB]/20 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 bg-white rounded-2xl shadow-xl p-6">
           <div className="flex items-center justify-between">
@@ -815,7 +817,8 @@ export default function EnhancedPOS() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </CashierLayout>
   );
 }

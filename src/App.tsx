@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -27,6 +27,7 @@ setupConsoleErrorSuppression();
 function AppContent() {
   const { user, userProfile, loading } = useAuth();
   const [forceLoad, setForceLoad] = React.useState(false);
+  const location = useLocation();
 
   console.log('🎯 App Content Render:', { 
     user: user?.id || null, 
@@ -44,6 +45,24 @@ function AppContent() {
 
   if (loading && !forceLoad) {
     return <AppLoading onTimeout={handleLoadingTimeout} />;
+  }
+
+  // Check if we're on a cashier route
+  const isCashierRoute = location.pathname.startsWith('/cashier');
+
+  // Don't render the normal layout for cashier routes
+  if (isCashierRoute) {
+    return (
+      <>
+        <AppRoutes />
+        <Toaster 
+          position="top-right" 
+          richColors 
+          closeButton
+          duration={4000}
+        />
+      </>
+    );
   }
 
   return (

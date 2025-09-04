@@ -22,6 +22,7 @@ import {
   Clock,
   Zap
 } from 'lucide-react';
+import CashierLayout from '../../components/cashier/CashierLayout';
 
 export default function CashierReports() {
   const navigate = useNavigate();
@@ -168,8 +169,9 @@ export default function CashierReports() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] via-[#FFFFFF] to-[#F8F9FA]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <CashierLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] via-[#FFFFFF] to-[#F8F9FA]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Modern Header with Glassmorphism */}
         <div className="mb-8 backdrop-blur-xl bg-white/80 border border-white/20 rounded-3xl shadow-2xl p-8">
           <div className="flex items-center justify-between">
@@ -507,7 +509,8 @@ export default function CashierReports() {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </CashierLayout>
   );
 }

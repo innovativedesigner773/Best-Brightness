@@ -22,6 +22,7 @@ import {
   Activity,
   Eye
 } from 'lucide-react';
+import CashierLayout from '../../components/cashier/CashierLayout';
 
 export default function EnhancedCashierDashboard() {
   const navigate = useNavigate();
@@ -81,8 +82,9 @@ export default function EnhancedCashierDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-cyan-50/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <CashierLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-cyan-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Modern Header with Glassmorphism */}
         <div className="mb-8 backdrop-blur-xl bg-white/80 border border-white/20 rounded-3xl shadow-2xl p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -472,8 +474,9 @@ export default function EnhancedCashierDashboard() {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </div>
+    </CashierLayout>
   );
 }
