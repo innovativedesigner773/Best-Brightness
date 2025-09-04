@@ -16,6 +16,7 @@ import ServerStatusBanner from './components/common/ServerStatusBanner';
 import OfflineIndicator from './components/common/OfflineIndicator';
 import AppLoading from './components/common/AppLoading';
 import AppRoutes from './routes/AppRoutes';
+import BotpressIframeChat from './components/common/BotpressIframeChat';
 
 // Config
 import { queryClient } from './config/queryClient';
@@ -102,6 +103,8 @@ export default function App() {
               <CartProvider>
                 <FavouritesProvider>
                   <AppContent />
+                  {/* Fallback iframe-based chat to avoid CDN script issues */}
+                  <BotpressIframeChat />
                 </FavouritesProvider>
               </CartProvider>
             </ErrorBoundary>
