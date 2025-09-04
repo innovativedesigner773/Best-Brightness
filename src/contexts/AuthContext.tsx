@@ -501,6 +501,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔄 Starting signout process...');
 
+      // Clear auth state first
+      setAuthState({
+        user: null,
+        userProfile: null,
+        profile: null,
+        session: null,
+        loading: false,
+      });
+
+      // Clear any cached data
+      localStorage.removeItem('best-brightness-auth');
+      sessionStorage.removeItem('best-brightness-auth');
+
       const { error } = await supabase.auth.signOut();
 
       if (error) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   ShoppingCart, 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function EnhancedCashierDashboard() {
+  const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [activeStats, setActiveStats] = useState(null);
@@ -56,19 +58,19 @@ export default function EnhancedCashierDashboard() {
   const currentStats = statsData[selectedPeriod];
 
   const recentTransactions = [
-    { id: 1, customer: 'John Smith', amount: 'R45.99', time: '2 min ago', items: 3, status: 'completed' },
-    { id: 2, customer: 'Sarah Johnson', amount: 'R128.45', time: '5 min ago', items: 7, status: 'completed' },
-    { id: 3, customer: 'Mike Davis', amount: 'R67.20', time: '8 min ago', items: 4, status: 'completed' },
-    { id: 4, customer: 'Emma Wilson', amount: 'R234.78', time: '12 min ago', items: 12, status: 'refunded' },
-    { id: 5, customer: 'Tom Brown', amount: 'R89.34', time: '15 min ago', items: 5, status: 'completed' }
+    { id: 1, customer: 'Clean Home Restaurant', amount: 'R845.99', time: '2 min ago', items: 8, status: 'completed' },
+    { id: 2, customer: 'Sparkle Office Solutions', amount: 'R1,128.45', time: '5 min ago', items: 12, status: 'completed' },
+    { id: 3, customer: 'Fresh Start Catering', amount: 'R367.20', time: '8 min ago', items: 6, status: 'completed' },
+    { id: 4, customer: 'Pristine Hotel Group', amount: 'R2,234.78', time: '12 min ago', items: 25, status: 'refunded' },
+    { id: 5, customer: 'Bright Future Daycare', amount: 'R289.34', time: '15 min ago', items: 9, status: 'completed' }
   ];
 
   const topProducts = [
-    { name: 'Coca Cola 500ml', sold: 24, revenue: 'R383.76', trend: '+15%' },
-    { name: 'White Bread', sold: 18, revenue: 'R405.00', trend: '+8%' },
-    { name: 'Milk 1L', sold: 15, revenue: 'R281.25', trend: '+12%' },
-    { name: 'Apples 1kg', sold: 12, revenue: 'R420.00', trend: '+5%' },
-    { name: 'Chicken Breast 1kg', sold: 8, revenue: 'R719.92', trend: '+22%' }
+    { name: 'All-Purpose Cleaner 500ml', sold: 24, revenue: 'R383.76', trend: '+15%' },
+    { name: 'Toilet Paper 12-Pack', sold: 18, revenue: 'R405.00', trend: '+8%' },
+    { name: 'Dish Soap Concentrate 1L', sold: 15, revenue: 'R281.25', trend: '+12%' },
+    { name: 'Microfiber Cloth Set', sold: 12, revenue: 'R420.00', trend: '+5%' },
+    { name: 'Floor Disinfectant 2L', sold: 8, revenue: 'R719.92', trend: '+22%' }
   ];
 
   const achievements = [
@@ -79,21 +81,28 @@ export default function EnhancedCashierDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#87CEEB]/20 to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8 bg-white rounded-2xl shadow-xl p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-cyan-50/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Modern Header with Glassmorphism */}
+        <div className="mb-8 backdrop-blur-xl bg-white/80 border border-white/20 rounded-3xl shadow-2xl p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-[#2C3E50]">Cashier Dashboard</h1>
-              <p className="text-[#2C3E50]/80 mt-2">Your point-of-sale overview and performance metrics</p>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg">
+                <Activity className="h-8 w-8" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                  Cashier Dashboard
+                </h1>
+                <p className="text-slate-500 mt-1 font-medium">Your point-of-sale overview and performance metrics</p>
+              </div>
             </div>
             <div className="mt-4 lg:mt-0 flex flex-col lg:flex-row lg:items-center lg:space-x-6">
               <div className="text-right">
-                <div className="text-2xl font-bold text-[#2C3E50]">
+                <div className="text-2xl font-bold text-slate-800">
                   {currentTime.toLocaleTimeString()}
                 </div>
-                <div className="text-[#2C3E50]/80">
+                <div className="text-slate-500 font-medium">
                   {currentTime.toLocaleDateString('en-ZA', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -102,8 +111,9 @@ export default function EnhancedCashierDashboard() {
                   })}
                 </div>
               </div>
-              <div className="bg-[#4682B4] text-white p-4 rounded-2xl shadow-lg">
-                <Activity className="h-8 w-8" />
+              <div className="flex items-center space-x-2 backdrop-blur-xl bg-white/80 border border-white/20 rounded-2xl px-4 py-2 shadow-lg">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-slate-600">Active Session</span>
               </div>
             </div>
           </div>
@@ -111,8 +121,8 @@ export default function EnhancedCashierDashboard() {
 
         {/* Period Selector */}
         <div className="mb-6">
-          <div className="bg-white rounded-2xl shadow-xl p-4 inline-block">
-            <div className="flex space-x-2">
+          <div className="backdrop-blur-xl bg-white/80 border border-white/20 rounded-2xl shadow-lg p-2 inline-block">
+            <div className="flex space-x-1">
               {[
                 { key: 'today', label: 'Today' },
                 { key: 'week', label: 'This Week' },
@@ -123,8 +133,8 @@ export default function EnhancedCashierDashboard() {
                   onClick={() => setSelectedPeriod(period.key)}
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     selectedPeriod === period.key
-                      ? 'bg-[#4682B4] text-white shadow-lg transform -translate-y-1'
-                      : 'text-[#2C3E50] hover:bg-[#87CEEB]/20'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg transform scale-105'
+                      : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50'
                   }`}
                 >
                   {period.label}
@@ -273,7 +283,10 @@ export default function EnhancedCashierDashboard() {
               Quick Actions
             </h2>
             <div className="grid grid-cols-1 gap-4">
-              <button className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg">
+              <button 
+                onClick={() => navigate('/cashier/pos')}
+                className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg"
+              >
                 <div className="p-3 rounded-xl bg-gradient-to-br from-[#4682B4] to-[#2C3E50] text-white mr-4 group-hover:shadow-lg group-hover:scale-110 transition-all duration-300">
                   <ShoppingCart className="h-6 w-6" />
                 </div>
@@ -283,7 +296,10 @@ export default function EnhancedCashierDashboard() {
                 </div>
               </button>
 
-              <button className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg">
+              <button 
+                onClick={() => navigate('/cashier/reports')}
+                className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg"
+              >
                 <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white mr-4 group-hover:shadow-lg group-hover:scale-110 transition-all duration-300">
                   <BarChart3 className="h-6 w-6" />
                 </div>
@@ -293,7 +309,10 @@ export default function EnhancedCashierDashboard() {
                 </div>
               </button>
 
-              <button className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg">
+              <button 
+                onClick={() => navigate('/admin/products')}
+                className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg"
+              >
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white mr-4 group-hover:shadow-lg group-hover:scale-110 transition-all duration-300">
                   <Package className="h-6 w-6" />
                 </div>
@@ -303,7 +322,10 @@ export default function EnhancedCashierDashboard() {
                 </div>
               </button>
 
-              <button className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg">
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center p-4 rounded-xl border-2 border-[#4682B4]/20 hover:bg-gradient-to-r hover:from-[#87CEEB]/10 hover:to-[#4682B4]/10 transition-all duration-300 group hover:border-[#4682B4]/40 hover:shadow-lg"
+              >
                 <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white mr-4 group-hover:shadow-lg group-hover:scale-110 transition-all duration-300">
                   <Receipt className="h-6 w-6" />
                 </div>

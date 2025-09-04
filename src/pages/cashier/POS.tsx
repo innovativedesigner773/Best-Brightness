@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  Scan, 
-  ShoppingCart, 
-  CreditCard, 
-  Percent, 
-  Users, 
+import {
+  Scan,
+  ShoppingCart,
+  CreditCard,
+  Percent,
+  Users,
   Calculator,
   Trash2,
   Plus,
@@ -20,7 +20,7 @@ import {
   Delete
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { BrowserMultiFormatReader, Result } from '@zxing/browser';
+import { BrowserMultiFormatReader, type Result } from '@zxing/browser';
 
 type CartItem = {
   id: number;
@@ -127,7 +127,7 @@ export default function EnhancedPOS() {
         await reader.decodeFromVideoDevice(
           undefined,
           videoRef.current as HTMLVideoElement,
-          (result: Result | undefined, err) => {
+          (result: any, err: any) => {
             if (!mounted) return;
             if (result) {
               const text = result.getText();
@@ -156,7 +156,7 @@ export default function EnhancedPOS() {
       mounted = false;
       try {
         reader.reset();
-      } catch {}
+      } catch { }
     };
   }, [scanning]);
 
@@ -173,7 +173,7 @@ export default function EnhancedPOS() {
       const existingItem = cartItems.find((item) => item.barcode === value);
       if (existingItem) {
         setCartItems(cartItems.map((item) =>
-          item.barcode === value 
+          item.barcode === value
             ? { ...item, quantity: item.quantity + 1 }
             : item
         ));
@@ -273,7 +273,7 @@ export default function EnhancedPOS() {
               <X className="h-6 w-6" />
             </button>
           </div>
-          
+
           <div className="mb-6">
             <input
               type="text"
@@ -434,7 +434,7 @@ export default function EnhancedPOS() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Quick Product Buttons */}
               <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
                 {productsLoading && (
@@ -485,7 +485,7 @@ export default function EnhancedPOS() {
                   Search
                 </button>
               </div>
-              
+
               {customer && (
                 <div className="bg-gradient-to-r from-[#4682B4]/10 to-[#87CEEB]/20 rounded-xl p-4 border border-[#4682B4]/20">
                   <div className="flex items-center justify-between">
@@ -512,7 +512,7 @@ export default function EnhancedPOS() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-xl p-6 sticky top-4">
               <h2 className="text-2xl font-semibold text-[#2C3E50] mb-6">Transaction</h2>
-              
+
               {cartItems.length === 0 ? (
                 <div className="text-center py-8 border-2 border-dashed border-[#4682B4]/30 rounded-xl mb-6 bg-gradient-to-br from-[#87CEEB]/10 to-transparent">
                   <ShoppingCart className="h-12 w-12 text-[#4682B4] mx-auto mb-3" />
@@ -780,31 +780,31 @@ export default function EnhancedPOS() {
               </div>
 
               <div className="mt-4 flex space-x-3">
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { /* small delay for UI */ }, 0); window.setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
-                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => {}, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { /* small delay for UI */ }, 0); window.setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
+                <button onClick={() => { const el = document.activeElement as HTMLElement | null; el?.blur(); setTimeout(() => { }, 0); }} className="hidden" />
                 <button onClick={handlePrintReceipt} className="flex-1 bg-[#4682B4] text-white py-2 rounded-xl hover:bg-[#2C3E50] transition-all duration-300 font-semibold flex items-center justify-center">
                   <Printer className="h-5 w-5 mr-2" />
                   Print

@@ -28,7 +28,7 @@ import AdminUsers from '../pages/admin/Users';
 // Cashier Pages
 import CashierDashboard from '../pages/cashier/Dashboard';
 import POS from '../pages/cashier/POS';
-
+import CashierReports from '../pages/cashier/Reports';
 // Components
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import AuthGate from '../components/common/AuthGate';
@@ -99,7 +99,15 @@ export default function AppRoutes() {
         path="/cashier" 
         element={
           <ProtectedRoute allowedRoles={['cashier', 'staff', 'manager', 'admin']}>
-            <Navigate to="/cashier/pos" replace />
+            <Navigate to="/cashier/dashboard" replace />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/cashier/dashboard" 
+        element={
+          <ProtectedRoute allowedRoles={['cashier', 'staff', 'manager', 'admin']}>
+            <CashierDashboard />
           </ProtectedRoute>
         } 
       />
@@ -108,6 +116,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['cashier', 'staff', 'manager', 'admin']}>
             <POS />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/cashier/reports" 
+        element={
+          <ProtectedRoute allowedRoles={['cashier', 'staff', 'manager', 'admin']}>
+            <CashierReports />
           </ProtectedRoute>
         } 
       />
