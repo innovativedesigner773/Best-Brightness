@@ -61,8 +61,108 @@ const formatDiscount = (type: string, value: number) => {
   }
 };
 
+// Color themes for different promotion types
+const getPromotionTheme = (promotion: any) => {
+  // Default theme for when no promotion is provided
+  const defaultTheme = {
+    primary: '#4682B4',
+    secondary: '#2C3E50',
+    accent: '#87CEEB',
+    background: 'from-[#87CEEB] via-[#B0E0E6] to-[#87CEEB]',
+    text: '#2C3E50',
+    button: '#4682B4',
+    buttonHover: '#2C3E50',
+    icon: 'Sparkles'
+  };
+
+  // Return default theme if promotion is null, undefined, or doesn't have required properties
+  if (!promotion || typeof promotion !== 'object' || !promotion.id) {
+    return defaultTheme;
+  }
+
+  // Dynamic themes based on your requested colors: orange, yellow, green, brown
+  const themes = [
+    {
+      // Orange Theme
+      primary: '#FF8C00',
+      secondary: '#FF7F00',
+      accent: '#FFA500',
+      background: 'from-[#FF8C00] via-[#FFA500] to-[#FF7F00]',
+      text: '#FFFFFF',
+      button: '#FFFFFF',
+      buttonHover: '#F8F9FA',
+      icon: 'Zap'
+    },
+    {
+      // Yellow Theme
+      primary: '#FFD700',
+      secondary: '#FFC107',
+      accent: '#FFEB3B',
+      background: 'from-[#FFD700] via-[#FFEB3B] to-[#FFC107]',
+      text: '#2C3E50',
+      button: '#2C3E50',
+      buttonHover: '#34495E',
+      icon: 'Star'
+    },
+    {
+      // Green Theme
+      primary: '#4CAF50',
+      secondary: '#45A049',
+      accent: '#66BB6A',
+      background: 'from-[#4CAF50] via-[#66BB6A] to-[#45A049]',
+      text: '#FFFFFF',
+      button: '#FFFFFF',
+      buttonHover: '#F8F9FA',
+      icon: 'Gift'
+    },
+    {
+      // Brown Theme
+      primary: '#8D6E63',
+      secondary: '#795548',
+      accent: '#A1887F',
+      background: 'from-[#8D6E63] via-[#A1887F] to-[#795548]',
+      text: '#FFFFFF',
+      button: '#FFFFFF',
+      buttonHover: '#F8F9FA',
+      icon: 'Clock'
+    }
+  ];
+
+  try {
+    // Create a more randomized selection using promotion ID and name
+    let seed = 0;
+    if (promotion.id) {
+      seed += promotion.id;
+    }
+    if (promotion.name) {
+      // Add character codes from promotion name for more randomness
+      for (let i = 0; i < Math.min(promotion.name.length, 5); i++) {
+        seed += promotion.name.charCodeAt(i);
+      }
+    } else {
+      // Fallback randomization using current timestamp if no name
+      seed += Date.now() % 1000;
+    }
+    
+    // Use the seed to get a random but consistent theme for this promotion
+    const themeIndex = Math.abs(seed) % themes.length;
+    return themes[themeIndex] || defaultTheme;
+  } catch (error) {
+    console.warn('Error getting promotion theme:', error);
+    return defaultTheme;
+  }
+};
+
 // Add this helper function before the Home component
 const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
+  const theme = getPromotionTheme(promotion);
+  const IconComponent = promotion ? 
+    (theme.icon === 'Zap' ? Zap : 
+     theme.icon === 'Gift' ? Gift : 
+     theme.icon === 'Clock' ? Clock : 
+     theme.icon === 'Star' ? Star : Zap) : 
+    Sparkles;
+
   if (!promotion) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -73,7 +173,7 @@ const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
           className="text-center lg:text-left"
         >
           <div className="flex items-center justify-center lg:justify-start mb-4">
-            <Sparkles className="h-8 w-8 text-white mr-3" />
+            <IconComponent className="h-8 w-8 text-white mr-3" />
             <span className="text-white/90 font-medium">Professional Grade Quality</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#2C3E50] leading-tight">
@@ -153,22 +253,28 @@ const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
         className="text-center lg:text-left"
       >
         <div className="flex items-center justify-center lg:justify-start mb-4">
-          <Zap className="h-8 w-8 text-white mr-3" />
+          <IconComponent className="h-8 w-8 text-white mr-3" />
           <span className="text-white/90 font-medium">Hot Deal</span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#2C3E50] leading-tight">
+        <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white leading-tight">
           {promotion.name}
         </h1>
-        <div className="text-3xl font-black text-[#E74C3C] mb-4">
+        <motion.div 
+          className="text-3xl font-black mb-4"
+          style={{ color: theme.accent }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
           {formatDiscount(promotion.type, promotion.value)}
-        </div>
-        <p className="text-xl mb-8 text-[#2C3E50]/80 max-w-xl">
+        </motion.div>
+        <p className="text-xl mb-8 text-white/90 max-w-xl">
           {promotion.description}
         </p>
         {timeRemaining && (
-          <div className="mb-8 inline-flex items-center bg-[#2C3E50]/10 rounded-lg px-4 py-2">
-            <Clock className="h-5 w-5 mr-2 text-[#2C3E50]" />
-            <span className="font-mono font-bold text-[#2C3E50]">
+          <div className="mb-8 inline-flex items-center bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+            <Clock className="h-5 w-5 mr-2 text-white" />
+            <span className="font-mono font-bold text-white">
               {timeRemaining.days}d {timeRemaining.hours}h {timeRemaining.minutes}m
             </span>
           </div>
@@ -176,14 +282,19 @@ const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
         <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
           <Link
             to={buildPromotionUrl(promotion)}
-            className="bg-[#E74C3C] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#C0392B] transition-all duration-300 inline-flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            className="bg-white text-gray-800 px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300 inline-flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            style={{ color: theme.primary }}
           >
             Shop Now
             <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
           <Link
             to={buildPromotionUrl(promotion)}
-            className="border-2 border-[#E74C3C] text-[#E74C3C] px-8 py-4 rounded-xl font-semibold hover:bg-[#E74C3C] hover:text-white transition-all duration-300 inline-flex items-center justify-center"
+            className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-gray-800 transition-all duration-300 inline-flex items-center justify-center"
+            style={{ 
+              borderColor: 'white',
+              '--hover-text-color': theme.primary 
+            } as React.CSSProperties}
           >
             View Details
           </Link>
@@ -390,17 +501,56 @@ export default function Home() {
       )}
       
       {/* Updated Hero Section with Promotions */}
-      <section className="relative bg-gradient-to-br from-[#87CEEB] via-[#B0E0E6] to-[#87CEEB] overflow-hidden">
+      <section 
+        className="relative overflow-hidden transition-all duration-1000 ease-in-out"
+        style={{
+          background: (() => {
+            if (currentSlideIndex === 0) {
+              return 'linear-gradient(135deg, #87CEEB 0%, #B0E0E6 50%, #87CEEB 100%)';
+            }
+            
+            const currentPromotion = activePromotions[currentSlideIndex - 1];
+            if (currentPromotion && currentPromotion.id) {
+              const theme = getPromotionTheme(currentPromotion);
+              return `linear-gradient(135deg, ${theme.primary} 0%, ${theme.accent} 50%, ${theme.secondary} 100%)`;
+            }
+            
+            return 'linear-gradient(135deg, #87CEEB 0%, #B0E0E6 50%, #87CEEB 100%)';
+          })()
+        }}
+      >
         {/* Floating bubbles animation */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-10 left-10 w-4 h-4 bg-white/20 rounded-full animate-pulse"></div>
           <div className="absolute top-32 right-20 w-6 h-6 bg-white/15 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
           <div className="absolute bottom-20 left-1/4 w-3 h-3 bg-white/25 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
           <div className="absolute top-1/2 right-1/3 w-5 h-5 bg-white/10 rounded-full animate-bounce" style={{ animationDelay: '2s' }}></div>
+          {/* Additional themed floating elements */}
+          {currentSlideIndex > 0 && activePromotions[currentSlideIndex - 1] && activePromotions[currentSlideIndex - 1].id && (
+            <>
+              <div 
+                className="absolute top-1/4 left-1/3 w-2 h-2 rounded-full animate-pulse" 
+                style={{ 
+                  backgroundColor: getPromotionTheme(activePromotions[currentSlideIndex - 1]).accent + '40',
+                  animationDelay: '0.3s' 
+                }}
+              ></div>
+              <div 
+                className="absolute bottom-1/3 right-1/4 w-3 h-3 rounded-full animate-bounce" 
+                style={{ 
+                  backgroundColor: getPromotionTheme(activePromotions[currentSlideIndex - 1]).primary + '30',
+                  animationDelay: '1.5s' 
+                }}
+              ></div>
+            </>
+          )}
         </div>
        
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <HeroSlide promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]} />
+          <HeroSlide 
+            key={currentSlideIndex} 
+            promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]} 
+          />
           
           {/* Slide indicators */}
           {activePromotions.length > 0 && (
@@ -408,18 +558,29 @@ export default function Home() {
               <button
                 onClick={() => setCurrentSlideIndex(0)}
                 className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  currentSlideIndex === 0 ? 'bg-[#4682B4] w-6' : 'bg-white/50 hover:bg-white/80'
+                  currentSlideIndex === 0 ? 'w-6' : 'bg-white/50 hover:bg-white/80'
                 }`}
+                style={{
+                  backgroundColor: currentSlideIndex === 0 ? '#4682B4' : undefined
+                }}
               />
-              {activePromotions.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlideIndex(index + 1)}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    currentSlideIndex === index + 1 ? 'bg-[#4682B4] w-6' : 'bg-white/50 hover:bg-white/80'
-                  }`}
-                />
-              ))}
+              {activePromotions.map((promotion, index) => {
+                if (!promotion || !promotion.id) return null;
+                
+                const theme = getPromotionTheme(promotion);
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentSlideIndex(index + 1)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      currentSlideIndex === index + 1 ? 'w-6' : 'bg-white/50 hover:bg-white/80'
+                    }`}
+                    style={{
+                      backgroundColor: currentSlideIndex === index + 1 ? theme.primary : undefined
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
