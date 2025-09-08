@@ -1,36 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Truck, CheckCircle, XCircle, Eye, RotateCcw, Calendar, Clock, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { OrderService } from '../../utils/order-service';
 import { toast } from 'sonner@2.0.3';
 
 interface Order {
   id: string;
   order_number: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed';
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   total_amount: number;
   items_count: number;
   created_at: string;
-  items: Array<{
+  order_items?: Array<{
     id: string;
-    name: string;
+    product_snapshot: {
+      name: string;
+      image_url: string;
+      price: number;
+    };
     quantity: number;
-    price: number;
-    image_url: string;
+    unit_price: number;
+    total_price: number;
   }>;
 }
 
 export default function OrderHistory() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const { user, userProfile } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
-  // Mock order data - in a real app this would be fetched from the API
-  const orders: Order[] = [
+  // Fetch orders from the database
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!userProfile?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+        
+        const result = await OrderService.getCustomerOrders(userProfile.id);
+        
+        if (result.success && result.data) {
+          // Transform the data to match our interface
+          const transformedOrders: Order[] = result.data.map((order: any) => ({
+            id: order.id,
+            order_number: order.order_number,
+            status: order.status,
+            payment_status: order.payment_status,
+            total_amount: order.total || order.total_amount, // Handle both field names
+            items_count: order.order_items?.length || 0,
+            created_at: order.created_at,
+            order_items: order.order_items?.map((item: any) => ({
+              id: item.id,
+              product_snapshot: item.product_snapshot,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.total_price,
+            })) || [],
+          }));
+          
+          setOrders(transformedOrders);
+        } else {
+          setError(result.error || 'Failed to fetch orders');
+        }
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        setError('Failed to fetch orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [userProfile?.id]);
+
+  // Mock order data - fallback for testing
+  const mockOrders: Order[] = [
     {
       id: 'order-1',
       order_number: 'ORD-2024-001',
@@ -112,6 +169,9 @@ export default function OrderHistory() {
     },
   ];
 
+  // Use real orders if available, otherwise fall back to mock data for testing
+  const displayOrders = orders.length > 0 ? orders : mockOrders;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -121,6 +181,8 @@ export default function OrderHistory() {
       case 'shipped':
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'delivered':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
@@ -139,6 +201,8 @@ export default function OrderHistory() {
         return <Truck className="h-4 w-4" />;
       case 'delivered':
         return <CheckCircle className="h-4 w-4" />;
+      case 'confirmed':
+        return <CheckCircle className="h-4 w-4" />;
       case 'cancelled':
         return <XCircle className="h-4 w-4" />;
       default:
@@ -148,19 +212,22 @@ export default function OrderHistory() {
 
   const handleReorder = async (order: Order) => {
     try {
-      for (const item of order.items) {
-        await addToCart({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image_url: item.image_url,
-          sku: `SKU-${item.id}`,
-          in_stock: true,
-        }, item.quantity);
+      if (order.order_items) {
+        for (const item of order.order_items) {
+          await addToCart({
+            id: item.id,
+            name: item.product_snapshot.name,
+            price: item.unit_price,
+            image_url: item.product_snapshot.image_url,
+            sku: `SKU-${item.id}`,
+            in_stock: true,
+          }, item.quantity);
+        }
+        toast.success('All items from this order have been added to your cart!');
+        navigate('/cart');
+      } else {
+        toast.error('No items found in this order');
       }
-      
-      toast.success('All items from this order have been added to your cart!');
-      navigate('/cart');
     } catch (error) {
       console.error('Error reordering items:', error);
       toast.error('Failed to reorder items. Please try again.');
@@ -168,12 +235,13 @@ export default function OrderHistory() {
   };
 
   const filteredOrders = filterStatus === 'all' 
-    ? orders 
-    : orders.filter(order => order.status === filterStatus);
+    ? displayOrders 
+    : displayOrders.filter(order => order.status === filterStatus);
 
   const statusTabs = [
     { key: 'all', label: 'All Orders', icon: ShoppingBag },
     { key: 'pending', label: 'Pending', icon: Clock },
+    { key: 'confirmed', label: 'Confirmed', icon: CheckCircle },
     { key: 'processing', label: 'Processing', icon: Package },
     { key: 'shipped', label: 'Shipped', icon: Truck },
     { key: 'delivered', label: 'Delivered', icon: CheckCircle },
@@ -201,13 +269,38 @@ export default function OrderHistory() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="bg-[#4682B4] text-white p-4 rounded-2xl shadow-lg inline-block mb-4">
+                <Package className="h-8 w-8" />
+              </div>
+              <p className="text-[#2C3E50] font-medium">Loading your orders...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8">
+            <div className="flex items-center space-x-3">
+              <XCircle className="h-6 w-6 text-red-600" />
+              <div>
+                <h3 className="text-red-800 font-semibold">Error Loading Orders</h3>
+                <p className="text-red-600 mt-1">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Filter Tabs */}
         <div className="mb-8">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2">
             <nav className="flex space-x-2">
               {statusTabs.map((tab) => {
                 const IconComponent = tab.icon;
-                const count = tab.key === 'all' ? orders.length : orders.filter(o => o.status === tab.key).length;
+                const count = tab.key === 'all' ? displayOrders.length : displayOrders.filter(o => o.status === tab.key).length;
                 return (
                   <button
                     key={tab.key}
@@ -285,25 +378,25 @@ export default function OrderHistory() {
                         </p>
                       </div>
                       <div className="flex space-x-4 overflow-x-auto">
-                        {order.items.slice(0, 3).map((item) => (
+                        {(order.order_items || order.items || []).slice(0, 3).map((item) => (
                           <div key={item.id} className="flex-shrink-0 flex items-center space-x-3 bg-white rounded-xl p-3 border border-gray-200">
                             <ImageWithFallback
-                              src={item.image_url}
-                              alt={item.name}
+                              src={item.product_snapshot?.image_url || 'https://via.placeholder.com/100'}
+                              alt={item.product_snapshot?.name || 'Product'}
                               className="w-12 h-12 object-cover rounded-lg"
                             />
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-[#2C3E50] truncate max-w-32">
-                                {item.name}
+                                {item.product_snapshot?.name || 'Product'}
                               </p>
                               <p className="text-xs text-[#2C3E50]/60 font-medium">Qty: {item.quantity}</p>
                             </div>
                           </div>
                         ))}
-                        {order.items.length > 3 && (
+                        {(order.order_items || order.items || []).length > 3 && (
                           <div className="flex-shrink-0 flex items-center justify-center bg-[#4682B4]/10 rounded-xl p-3 border border-[#4682B4]/20">
                             <span className="text-sm font-bold text-[#4682B4]">
-                              +{order.items.length - 3} more
+                              +{(order.order_items || order.items || []).length - 3} more
                             </span>
                           </div>
                         )}
@@ -320,7 +413,7 @@ export default function OrderHistory() {
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </button>
-                        {order.status === 'delivered' && (
+                        {(order.status === 'delivered' || order.status === 'confirmed') && (
                           <button 
                             onClick={() => handleReorder(order)}
                             className="flex items-center bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-semibold"
@@ -382,23 +475,23 @@ export default function OrderHistory() {
                   <div>
                     <h4 className="font-bold text-[#2C3E50] mb-4 text-lg">Items Ordered</h4>
                     <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {selectedOrder.items.map((item) => (
+                      {(selectedOrder.order_items || selectedOrder.items || []).map((item) => (
                         <div key={item.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
                           <ImageWithFallback
-                            src={item.image_url}
-                            alt={item.name}
+                            src={item.product_snapshot?.image_url || 'https://via.placeholder.com/100'}
+                            alt={item.product_snapshot?.name || 'Product'}
                             className="w-14 h-14 object-cover rounded-lg"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-[#2C3E50] leading-tight">
-                              {item.name}
+                              {item.product_snapshot?.name || 'Product'}
                             </p>
                             <p className="text-sm text-[#2C3E50]/70 font-medium">
-                              Qty: {item.quantity} × R{item.price.toFixed(2)}
+                              Qty: {item.quantity} × R{item.unit_price.toFixed(2)}
                             </p>
                           </div>
                           <p className="text-sm font-bold text-[#2C3E50]">
-                            R{(item.quantity * item.price).toFixed(2)}
+                            R{item.total_price.toFixed(2)}
                           </p>
                         </div>
                       ))}

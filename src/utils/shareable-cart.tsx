@@ -100,6 +100,8 @@ export class ShareableCartService {
    */
   static async getShareableCartByToken(token: string): Promise<ShareableCartResponse> {
     try {
+      console.log('🔍 Fetching shareable cart with token:', token);
+      
       const { data, error } = await supabase
         .from('shareable_carts')
         .select('*')
@@ -109,9 +111,12 @@ export class ShareableCartService {
         .single();
 
       if (error) {
-        console.error('Error fetching shareable cart:', error);
+        console.error('❌ Error fetching shareable cart:', error);
         return { success: false, error: 'Shareable cart not found or expired' };
       }
+
+      console.log('✅ Shareable cart found:', data);
+      console.log('📦 Cart data items:', data.cart_data?.items);
 
       // Update access count and last accessed time
       await supabase

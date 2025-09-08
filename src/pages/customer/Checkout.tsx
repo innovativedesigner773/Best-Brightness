@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { OrderService, OrderData } from '../../utils/order-service';
 import { toast } from 'sonner@2.0.3';
 
 export default function Checkout() {
@@ -99,27 +100,79 @@ export default function Checkout() {
     setLoading(true);
     
     try {
-      // Simulate order processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const orderData = {
-        items,
+      // Prepare order data
+      const orderData: OrderData = {
+        customer_id: userProfile?.id,
+        customer_email: user?.email || shippingInfo.email,
+        customer_info: {
+          first_name: shippingInfo.firstName,
+          last_name: shippingInfo.lastName,
+          phone: shippingInfo.phone,
+        },
+        billing_address: {
+          first_name: shippingInfo.firstName,
+          last_name: shippingInfo.lastName,
+          email: shippingInfo.email,
+          phone: shippingInfo.phone,
+          address: shippingInfo.address,
+          city: shippingInfo.city,
+          postal_code: shippingInfo.postalCode,
+          province: shippingInfo.province,
+        },
+        shipping_address: {
+          first_name: shippingInfo.firstName,
+          last_name: shippingInfo.lastName,
+          email: shippingInfo.email,
+          phone: shippingInfo.phone,
+          address: shippingInfo.address,
+          city: shippingInfo.city,
+          postal_code: shippingInfo.postalCode,
+          province: shippingInfo.province,
+        },
+        payment_method: 'credit_card',
+        payment_details: {
+          card_name: paymentInfo.cardName,
+          // Note: In production, never store actual card details
+          card_last_four: paymentInfo.cardNumber.slice(-4),
+        },
         subtotal,
+        shipping_amount: shippingCost,
         discount_amount,
         total_amount: finalTotal,
-        shipping_amount: shippingCost,
-        loyalty_points_used,
-        loyalty_discount,
-        shipping_info: shippingInfo,
+        currency: 'USD',
+        items: items.map(item => ({
+          product_id: item.product_id,
+          product_snapshot: {
+            name: item.name,
+            price: item.price,
+            image_url: item.image_url,
+            description: item.description,
+            category: item.category,
+          },
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+        })),
       };
 
-      // In a real app, this would make an API call to create the order
-      console.log('Creating order:', orderData);
+      // Create the order in the database
+      const result = await OrderService.createOrder(orderData);
       
-      // Clear cart and navigate to success page
-      await clearCart();
-      toast.success('Order placed successfully!');
-      navigate('/orders');
+      if (result.success) {
+        // Clear cart and navigate to success page
+        await clearCart();
+        toast.success('Order placed successfully! Stock has been updated.');
+        navigate('/orders');
+      } else {
+        // Show specific error message
+        const errorMessage = result.error || 'Failed to create order';
+        if (errorMessage.includes('Insufficient stock')) {
+          toast.error(`Stock issue: ${errorMessage}`);
+        } else {
+          toast.error(`Order failed: ${errorMessage}`);
+        }
+        throw new Error(errorMessage);
+      }
       
     } catch (error) {
       console.error('Error placing order:', error);
