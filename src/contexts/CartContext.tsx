@@ -116,7 +116,7 @@ const clearGuestCart = () => {
 };
 
 function calculateTotals(state: CartState): CartState {
-  const subtotal = state.items.reduce((sum, item) => sum + (item.original_price * item.quantity), 0);
+  const subtotal = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const promotion_discount = state.items.reduce((sum, item) => sum + ((item.promotion_discount || 0) * item.quantity), 0);
   const total = subtotal - promotion_discount - state.loyalty_discount;
 

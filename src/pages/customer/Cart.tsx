@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ShareCartModal from '../../components/common/ShareCartModal';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner@2.0.3';
 
 export default function Cart() {
@@ -36,35 +37,66 @@ export default function Cart() {
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [stockStatuses, setStockStatuses] = useState<Record<string, any>>({});
   const [showShareModal, setShowShareModal] = useState(false);
+  const [realStockData, setRealStockData] = useState<Record<string, any>>({});
 
-  // Mock stock data that would normally come from API
-  const mockStockData = {
-    '1': { stock_count: 7, in_stock: true },
-    '2': { stock_count: 3, in_stock: true },
-    '3': { stock_count: 23, in_stock: true },
-    '4': { stock_count: 45, in_stock: true },
-    '5': { stock_count: 0, in_stock: false },
-    '6': { stock_count: 8, in_stock: true },
-    '7': { stock_count: 15, in_stock: true },
-    '8': { stock_count: 127, in_stock: true },
-    '9': { stock_count: 1, in_stock: true },
-    '10': { stock_count: 42, in_stock: true },
-    '11': { stock_count: 5, in_stock: true },
-    '12': { stock_count: 9, in_stock: true },
-  };
-
-  // Simulate live stock checking
+  // Fetch real stock data from database
   useEffect(() => {
-    const checkStockLevels = () => {
+    const fetchStockData = async () => {
+      if (items.length === 0) return;
+
+      try {
+        console.log('📦 Fetching real stock data for cart items...');
+        
+        // Get unique product IDs from cart items
+        const productIds = [...new Set(items.map(item => item.product_id))];
+        
+        // Fetch stock data from Supabase
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('id, stock_quantity, is_active, stock_tracking')
+          .in('id', productIds);
+
+        if (productsError) {
+          console.error('❌ Error fetching stock data:', productsError);
+          return;
+        }
+
+        console.log('✅ Stock data fetched:', productsData);
+
+        // Create stock data mapping
+        const stockDataMap: Record<string, any> = {};
+        productsData?.forEach(product => {
+          const stockCount = product.stock_quantity || 0;
+          const isInStock = product.is_active && (product.stock_tracking ? stockCount > 0 : true);
+          
+          stockDataMap[product.id] = {
+            stock_count: stockCount,
+            in_stock: isInStock,
+            stock_tracking: product.stock_tracking
+          };
+        });
+
+        setRealStockData(stockDataMap);
+      } catch (error) {
+        console.error('Error fetching stock data:', error);
+      }
+    };
+
+    fetchStockData();
+  }, [items]);
+
+  // Update stock statuses based on real data
+  useEffect(() => {
+    const updateStockStatuses = () => {
       const newStockStatuses: Record<string, any> = {};
       
       items.forEach(item => {
         const productId = item.product_id;
-        const currentStock = mockStockData[productId] || { stock_count: 0, in_stock: false };
+        const currentStock = realStockData[productId] || { stock_count: 0, in_stock: false, stock_tracking: true };
         
         // Get stock status
         let stockStatus;
-        if (currentStock.stock_count === 0) {
+        if (!currentStock.in_stock) {
           stockStatus = { 
             status: 'out-of-stock', 
             message: 'Out of Stock', 
@@ -72,7 +104,7 @@ export default function Cart() {
             urgent: false,
             available: false
           };
-        } else if (currentStock.stock_count <= 3) {
+        } else if (currentStock.stock_count <= 3 && currentStock.stock_tracking) {
           stockStatus = { 
             status: 'urgent', 
             message: `Only ${currentStock.stock_count} left!`, 
@@ -80,7 +112,7 @@ export default function Cart() {
             urgent: true,
             available: true
           };
-        } else if (currentStock.stock_count <= 10) {
+        } else if (currentStock.stock_count <= 10 && currentStock.stock_tracking) {
           stockStatus = { 
             status: 'low', 
             message: `${currentStock.stock_count} in stock`, 
@@ -89,9 +121,12 @@ export default function Cart() {
             available: true
           };
         } else {
+          const message = currentStock.stock_tracking 
+            ? `${currentStock.stock_count} in stock`
+            : 'In Stock';
           stockStatus = { 
             status: 'good', 
-            message: `${currentStock.stock_count} in stock`, 
+            message: message, 
             color: 'text-green-600 bg-green-50 border-green-200',
             urgent: false,
             available: true
@@ -104,21 +139,28 @@ export default function Cart() {
       setStockStatuses(newStockStatuses);
     };
 
-    // Check stock immediately
-    checkStockLevels();
-
-    // Set up periodic stock checking (every 30 seconds)
-    const interval = setInterval(checkStockLevels, 30000);
-
-    return () => clearInterval(interval);
-  }, [items]);
+    updateStockStatuses();
+  }, [items, realStockData]);
 
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
-    const stockStatus = stockStatuses[itemId];
-    const maxStock = parseInt(stockStatus?.message?.match(/\d+/)?.[0] || '0');
-    
-    if (newQuantity > maxStock && stockStatus?.available) {
-      toast.error(`Only ${maxStock} units available in stock`);
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const productStock = realStockData[item.product_id];
+    if (!productStock) {
+      toast.error('Unable to verify stock availability');
+      return;
+    }
+
+    // Check stock limits
+    if (productStock.stock_tracking && newQuantity > productStock.stock_count) {
+      toast.error(`Only ${productStock.stock_count} units available in stock`);
+      return;
+    }
+
+    // Check maximum quantity per order (10)
+    if (newQuantity > 10) {
+      toast.error('Maximum 10 units per order');
       return;
     }
 
@@ -175,8 +217,8 @@ export default function Cart() {
 
     // Check if any items are out of stock
     const outOfStockItems = items.filter(item => {
-      const stockStatus = stockStatuses[item.id];
-      return !stockStatus?.available;
+      const productStock = realStockData[item.product_id];
+      return !productStock?.in_stock;
     });
 
     if (outOfStockItems.length > 0) {
@@ -259,7 +301,8 @@ export default function Cart() {
                 <div className="space-y-6">
                   {items.map((item, index) => {
                     const stockStatus = stockStatuses[item.id] || { status: 'unknown', message: 'Checking...', color: 'text-gray-500 bg-gray-50' };
-                    const maxAvailable = parseInt(stockStatus.message?.match(/\d+/)?.[0] || '0');
+                    const productStock = realStockData[item.product_id] || { stock_count: 0, in_stock: false, stock_tracking: true };
+                    const maxAvailable = productStock.stock_tracking ? productStock.stock_count : 10;
                     
                     return (
                       <div key={item.id} className={`flex items-center space-x-6 py-6 ${
@@ -327,7 +370,7 @@ export default function Cart() {
                               </div>
                             )}
 
-                            {item.quantity > maxAvailable && stockStatus.available && (
+                            {item.quantity > maxAvailable && productStock.in_stock && productStock.stock_tracking && (
                               <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
                                 <AlertTriangle className="h-3 w-3 text-yellow-600 mr-1" />
                                 <span className="text-xs text-yellow-700 font-medium">
@@ -354,7 +397,7 @@ export default function Cart() {
                             <button
                               onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                               className="p-2 hover:bg-gray-100 rounded-r-xl transition-colors disabled:opacity-50"
-                              disabled={!stockStatus.available || item.quantity >= maxAvailable}
+                              disabled={!productStock.in_stock || item.quantity >= Math.min(maxAvailable, 10)}
                             >
                               <Plus className="h-4 w-4 text-[#2C3E50]" />
                             </button>

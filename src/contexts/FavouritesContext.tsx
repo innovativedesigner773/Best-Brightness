@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 import { toast } from 'sonner@2.0.3';
 
 export interface FavouriteItem {
@@ -53,33 +54,64 @@ export function FavouritesProvider({ children }: FavouritesProviderProps) {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // Mock stock data that would normally come from API
-  const mockStockData: Record<string, { stock_count: number; in_stock: boolean }> = {
-    '1': { stock_count: 7, in_stock: true },
-    '2': { stock_count: 3, in_stock: true },
-    '3': { stock_count: 23, in_stock: true },
-    '4': { stock_count: 45, in_stock: true },
-    '5': { stock_count: 0, in_stock: false },
-    '6': { stock_count: 8, in_stock: true },
-    '7': { stock_count: 15, in_stock: true },
-    '8': { stock_count: 127, in_stock: true },
-    '9': { stock_count: 1, in_stock: true },
-    '10': { stock_count: 42, in_stock: true },
-    '11': { stock_count: 5, in_stock: true },
-    '12': { stock_count: 9, in_stock: true },
-  };
+  const [realStockData, setRealStockData] = useState<Record<string, { stock_count: number; in_stock: boolean }>>({});
 
   // Load favourites on mount and when user changes
   useEffect(() => {
     loadFavourites();
   }, [user]);
 
-  // Periodic stock checking
+  // Fetch real stock data for favourites
   useEffect(() => {
-    const checkStockLevels = () => {
+    const fetchStockData = async () => {
+      if (items.length === 0) return;
+
+      try {
+        console.log('📦 Fetching real stock data for favourites...');
+        
+        // Get unique product IDs from favourites
+        const productIds = [...new Set(items.map(item => item.product_id))];
+        
+        // Fetch stock data from Supabase
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('id, stock_quantity, is_active, stock_tracking')
+          .in('id', productIds);
+
+        if (productsError) {
+          console.error('❌ Error fetching stock data for favourites:', productsError);
+          return;
+        }
+
+        console.log('✅ Stock data fetched for favourites:', productsData);
+
+        // Create stock data mapping
+        const stockDataMap: Record<string, { stock_count: number; in_stock: boolean }> = {};
+        productsData?.forEach(product => {
+          const stockCount = product.stock_quantity || 0;
+          const isInStock = product.is_active && (product.stock_tracking ? stockCount > 0 : true);
+          
+          stockDataMap[product.id] = {
+            stock_count: stockCount,
+            in_stock: isInStock
+          };
+        });
+
+        setRealStockData(stockDataMap);
+      } catch (error) {
+        console.error('Error fetching stock data for favourites:', error);
+      }
+    };
+
+    fetchStockData();
+  }, [items]);
+
+  // Update favourites with real stock data
+  useEffect(() => {
+    const updateStockLevels = () => {
       setItems(prevItems => 
         prevItems.map(item => {
-          const stockData = mockStockData[item.product_id];
+          const stockData = realStockData[item.product_id];
           if (stockData && (stockData.stock_count !== item.stock_count || stockData.in_stock !== item.in_stock)) {
             return {
               ...item,
@@ -92,12 +124,8 @@ export function FavouritesProvider({ children }: FavouritesProviderProps) {
       );
     };
 
-    // Check immediately and then every 30 seconds
-    checkStockLevels();
-    const interval = setInterval(checkStockLevels, 30000);
-
-    return () => clearInterval(interval);
-  }, [items.length]);
+    updateStockLevels();
+  }, [realStockData]);
 
   const loadFavourites = async () => {
     try {
