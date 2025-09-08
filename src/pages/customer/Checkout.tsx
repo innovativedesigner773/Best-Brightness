@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Truck, MapPin, Check, ArrowLeft, Package, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
@@ -9,17 +9,17 @@ import { toast } from 'sonner@2.0.3';
 
 export default function Checkout() {
   const { items, subtotal, discount_amount, total, loyalty_points_used, loyalty_discount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
   const [shippingInfo, setShippingInfo] = useState({
-    firstName: user?.user_metadata?.first_name || '',
-    lastName: user?.user_metadata?.last_name || '',
+    firstName: userProfile?.first_name || '',
+    lastName: userProfile?.last_name || '',
     email: user?.email || '',
-    phone: '',
+    phone: userProfile?.phone || '',
     address: '',
     city: '',
     postalCode: '',
@@ -35,6 +35,18 @@ export default function Checkout() {
 
   const shippingCost = total >= 500 ? 0 : 50;
   const finalTotal = total + shippingCost;
+
+  // Sync form data when userProfile loads
+  useEffect(() => {
+    if (userProfile) {
+      setShippingInfo(prev => ({
+        ...prev,
+        firstName: userProfile.first_name || '',
+        lastName: userProfile.last_name || '',
+        phone: userProfile.phone || '',
+      }));
+    }
+  }, [userProfile]);
 
   const steps = [
     { id: 1, name: 'Shipping', icon: Truck },

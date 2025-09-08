@@ -24,7 +24,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function SharedCartView() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [shareableCart, setShareableCart] = useState<ShareableCart | null>(null);
@@ -33,10 +33,10 @@ export default function SharedCartView() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   
   const [shippingInfo, setShippingInfo] = useState({
-    firstName: user?.user_metadata?.first_name || '',
-    lastName: user?.user_metadata?.last_name || '',
+    firstName: userProfile?.first_name || '',
+    lastName: userProfile?.last_name || '',
     email: user?.email || '',
-    phone: '',
+    phone: userProfile?.phone || '',
     address: '',
     city: '',
     postalCode: '',
@@ -55,6 +55,18 @@ export default function SharedCartView() {
       loadShareableCart();
     }
   }, [token]);
+
+  // Sync form data when userProfile loads
+  useEffect(() => {
+    if (userProfile) {
+      setShippingInfo(prev => ({
+        ...prev,
+        firstName: userProfile.first_name || '',
+        lastName: userProfile.last_name || '',
+        phone: userProfile.phone || '',
+      }));
+    }
+  }, [userProfile]);
 
   const loadShareableCart = async () => {
     if (!token) return;
