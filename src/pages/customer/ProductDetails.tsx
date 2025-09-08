@@ -106,7 +106,7 @@ export default function ProductDetails() {
   // Show loading state
   if (productLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -115,14 +115,14 @@ export default function ProductDetails() {
   // Show error state
   if (error || !product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Product Not Found</h2>
-          <p className="text-gray-600 mb-4">{error || 'The product you are looking for does not exist.'}</p>
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2">Product Not Found</h2>
+          <p className="text-muted-foreground mb-4">{error || 'The product you are looking for does not exist.'}</p>
           <button
             onClick={() => navigate('/products')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
           >
             Back to Products
           </button>
@@ -246,14 +246,14 @@ export default function ProductDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Back Navigation */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-card text-card-foreground shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center py-4">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Products
@@ -267,14 +267,14 @@ export default function ProductDetails() {
           {/* Product Images */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div className="aspect-square bg-white rounded-2xl overflow-hidden shadow-lg">
+            <div className="aspect-square bg-card rounded-2xl overflow-hidden shadow-lg relative">
               <ImageWithFallback
                 src={product.images[selectedImage] || product.images[0]}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
               {discount > 0 && (
-                <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                <div className="absolute top-4 left-4 bg-destructive text-destructive-foreground px-3 py-1 rounded-full text-sm font-semibold">
                   {discount}% OFF
                 </div>
               )}
@@ -289,8 +289,8 @@ export default function ProductDetails() {
                     onClick={() => setSelectedImage(index)}
                     className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
                       selectedImage === index 
-                        ? 'border-blue-500' 
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-primary' 
+                        : 'border-border hover:border-accent'
                     }`}
                   >
                     <ImageWithFallback
@@ -309,15 +309,15 @@ export default function ProductDetails() {
             {/* Header */}
             <div>
               {category && (
-                <p className="text-sm text-blue-600 font-medium mb-2">{category.name}</p>
+                <p className="text-sm text-primary font-medium mb-2">{category.name}</p>
               )}
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{product.name}</h1>
               <div className="flex items-center gap-4">
                 <div className="flex items-center">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                  <span className="ml-1 text-sm text-gray-600">4.8 (124 reviews)</span>
+                  <span className="ml-1 text-sm text-muted-foreground">4.8 (124 reviews)</span>
                 </div>
-                <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+                <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
               </div>
             </div>
 
@@ -330,11 +330,11 @@ export default function ProductDetails() {
             {/* Price */}
             <div className="space-y-1">
               <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold text-gray-900">
+                <span className="text-3xl font-bold text-foreground">
                   ${product.price.toFixed(2)}
                 </span>
                 {product.compare_at_price && (
-                  <span className="text-lg text-gray-500 line-through">
+                  <span className="text-lg text-muted-foreground line-through">
                     ${product.compare_at_price.toFixed(2)}
                   </span>
                 )}
@@ -344,13 +344,13 @@ export default function ProductDetails() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-600">Price includes VAT</p>
+              <p className="text-sm text-muted-foreground">Price includes VAT</p>
             </div>
 
             {/* Description */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Description</h3>
+              <p className="text-muted-foreground leading-relaxed">
                 {product.description || product.short_description || 'No description available.'}
               </p>
             </div>
@@ -358,12 +358,12 @@ export default function ProductDetails() {
             {/* Features */}
             {product.features && product.features.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Features</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Key Features</h3>
                 <ul className="space-y-2">
                   {product.features.map((feature: string, index: number) => (
                     <li key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-700">{feature}</span>
+                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <span className="text-muted-foreground">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -373,15 +373,15 @@ export default function ProductDetails() {
             {/* Quantity and Add to Cart */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Quantity
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center border border-gray-300 rounded-lg">
+                  <div className="flex items-center border border-input rounded-lg bg-card">
                     <button
                       onClick={() => handleQuantityChange(quantity - 1)}
                       disabled={quantity <= 1}
-                      className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                      className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
@@ -389,12 +389,12 @@ export default function ProductDetails() {
                     <button
                       onClick={() => handleQuantityChange(quantity + 1)}
                       disabled={quantity >= Math.min(10, product.stock_quantity || 0)}
-                      className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                      className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                     Maximum {Math.min(10, product.stock_quantity || 0)} per order
                   </span>
                 </div>
@@ -405,7 +405,7 @@ export default function ProductDetails() {
                 <button
                   onClick={handleAddToCart}
                   disabled={loading || stockInfo.status === 'out-of-stock'}
-                  className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 bg-primary text-primary-foreground py-3 px-6 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -420,8 +420,8 @@ export default function ProductDetails() {
                   disabled={favouriteLoading}
                   className={`p-3 rounded-lg border transition-colors ${
                     isProductFavourite
-                      ? 'bg-red-50 border-red-200 text-red-600'
-                      : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                      ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                      : 'bg-card border-input text-muted-foreground hover:bg-accent'
                   }`}
                 >
                   {favouriteLoading ? (
@@ -433,7 +433,7 @@ export default function ProductDetails() {
                 
                 <button
                   onClick={handleShare}
-                  className="p-3 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  className="p-3 rounded-lg border border-input text-muted-foreground hover:bg-accent"
                 >
                   <Share2 className="h-5 w-5" />
                 </button>
@@ -443,16 +443,16 @@ export default function ProductDetails() {
             {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t">
               <div className="text-center">
-                <Shield className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                <p className="text-xs text-gray-600">Quality Guarantee</p>
+                <Shield className="h-6 w-6 text-primary mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">Quality Guarantee</p>
               </div>
               <div className="text-center">
-                <Truck className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                <p className="text-xs text-gray-600">Free Delivery over $500</p>
+                <Truck className="h-6 w-6 text-primary mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">Free Delivery over $500</p>
               </div>
               <div className="text-center">
-                <RotateCcw className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-                <p className="text-xs text-gray-600">30-Day Return Policy</p>
+                <RotateCcw className="h-6 w-6 text-primary mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">30-Day Return Policy</p>
               </div>
             </div>
           </div>
@@ -460,13 +460,13 @@ export default function ProductDetails() {
 
         {/* Specifications */}
         {product.specifications && Object.keys(product.specifications).length > 0 && (
-          <div className="mt-12 bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Specifications</h2>
+          <div className="mt-12 bg-card text-card-foreground rounded-2xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Specifications</h2>
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(product.specifications).map(([key, value]) => (
-                <div key={key} className="border-b border-gray-100 pb-2">
-                  <dt className="text-sm font-medium text-gray-900">{key}</dt>
-                  <dd className="text-sm text-gray-700 mt-1">{String(value)}</dd>
+                <div key={key} className="border-b border-border pb-2">
+                  <dt className="text-sm font-medium text-foreground">{key}</dt>
+                  <dd className="text-sm text-muted-foreground mt-1">{String(value)}</dd>
                 </div>
               ))}
             </dl>
