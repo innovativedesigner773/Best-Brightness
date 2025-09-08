@@ -16,6 +16,7 @@ import ResetPassword from '../pages/auth/ResetPassword';
 import EmailConfirm from '../pages/auth/EmailConfirm';
 import Profile from '../pages/customer/Profile';
 import OrderHistory from '../pages/customer/OrderHistory';
+import SharedCartView from '../pages/customer/SharedCartView';
 
 // Admin Pages
 import AdminDashboard from '../pages/admin/Dashboard';
@@ -48,6 +49,9 @@ export default function AppRoutes() {
       {/* Cart and Favourites - Public but enhanced experience for authenticated users */}
       <Route path="/cart" element={<Cart />} />
       <Route path="/favourites" element={<Favourites />} />
+      
+      {/* Shared Cart - Public route for viewing shared carts */}
+      <Route path="/shared-cart/:token" element={<SharedCartView />} />
       
       {/* Auth Routes - redirect if already logged in based on role */}
       <Route 

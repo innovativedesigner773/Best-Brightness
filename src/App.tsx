@@ -17,6 +17,7 @@ import OfflineIndicator from './components/common/OfflineIndicator';
 import AppLoading from './components/common/AppLoading';
 import AppRoutes from './routes/AppRoutes';
 import BotpressIframeChat from './components/common/BotpressIframeChat';
+import { useSVGErrorHandler } from './utils/svg-error-handler';
 
 // Config
 import { queryClient } from './config/queryClient';
@@ -29,6 +30,9 @@ function AppContent() {
   const { user, userProfile, loading } = useAuth();
   const [forceLoad, setForceLoad] = React.useState(false);
   const location = useLocation();
+  
+  // Initialize SVG error handling for the entire app
+  useSVGErrorHandler();
 
   console.log('🎯 App Content Render:', { 
     user: user?.id || null, 

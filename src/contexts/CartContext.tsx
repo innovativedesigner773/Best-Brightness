@@ -239,6 +239,17 @@ interface CartContextType extends CartState {
   refreshCart: () => Promise<void>;
   mergeGuestCartWithUser: () => Promise<void>;
   getTotalItemCount: () => number;
+  canShareCart: () => boolean;
+  getCartSummary: () => {
+    items: CartItem[];
+    subtotal: number;
+    discount_amount: number;
+    promotion_discount: number;
+    total: number;
+    applied_promotions: Promotion[];
+    loyalty_points_used: number;
+    loyalty_discount: number;
+  };
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -440,6 +451,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return state.items.reduce((total, item) => total + item.quantity, 0);
   };
 
+  const canShareCart = () => {
+    return state.items.length > 0 && state.total > 0;
+  };
+
+  const getCartSummary = () => {
+    return {
+      items: state.items,
+      subtotal: state.subtotal,
+      discount_amount: state.discount_amount,
+      promotion_discount: state.promotion_discount,
+      total: state.total,
+      applied_promotions: state.applied_promotions,
+      loyalty_points_used: state.loyalty_points_used,
+      loyalty_discount: state.loyalty_discount,
+    };
+  };
+
   const value: CartContextType = {
     ...state,
     addToCart,
@@ -452,6 +480,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     refreshCart,
     mergeGuestCartWithUser,
     getTotalItemCount,
+    canShareCart,
+    getCartSummary,
   };
 
   return (

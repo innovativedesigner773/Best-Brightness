@@ -4,6 +4,7 @@ import { Search, User, Menu, X, LogOut, Settings, Package, BarChart3, Users, Spa
 import { useAuth } from '../../contexts/AuthContext';
 import { useFavourites } from '../../contexts/FavouritesContext';
 import CartIcon from './CartIcon';
+import ShareableCartNotifications from './ShareableCartNotifications';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -154,6 +155,9 @@ export default function Navbar() {
 
             {/* Cart Icon - Always visible */}
             <CartIcon className="hidden md:block" />
+
+            {/* Shareable Cart Notifications - Only for authenticated users */}
+            {user && <ShareableCartNotifications />}
 
             {user ? (
               <>

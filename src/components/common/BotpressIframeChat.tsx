@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { useSVGErrorHandler } from '../../utils/svg-error-handler';
 
 const SHAREABLE_URL =
   'https://cdn.botpress.cloud/webchat/v3.2/shareable.html?configUrl=https://files.bpcontent.cloud/2025/09/04/12/20250904124647-TFLLQOD2.json';
@@ -10,6 +11,10 @@ export default function BotpressIframeChat() {
   const [open, setOpen] = React.useState(false);
   const [primary] = React.useState('#79BEDF');
   const [fontFamily, setFontFamily] = React.useState('inherit');
+  const [iframeError, setIframeError] = React.useState(false);
+  
+  // Initialize SVG error handling
+  useSVGErrorHandler();
 
   React.useEffect(() => {
     // Read font from body to match site typography
@@ -39,6 +44,8 @@ export default function BotpressIframeChat() {
       `;
       document.head.appendChild(style);
     }
+
+    // SVG error handling is now managed by the useSVGErrorHandler hook
   }, []);
 
   // Close chat on route changes to avoid staying open unexpectedly
@@ -77,12 +84,43 @@ export default function BotpressIframeChat() {
             <path d="M18 6L6 18M6 6l12 12" stroke="#111827" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <iframe
-          title="Support Chat"
-          src={SHAREABLE_URL}
-          allow="clipboard-write; microphone;"
-          referrerPolicy="no-referrer"
-        />
+        {iframeError ? (
+          <div className="flex items-center justify-center h-full p-8 text-center">
+            <div>
+              <div className="text-gray-500 mb-4">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Chat Unavailable</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                The support chat is temporarily unavailable. Please try again later or contact us directly.
+              </p>
+              <button
+                onClick={() => setIframeError(false)}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : (
+          <iframe
+            title="Support Chat"
+            src={SHAREABLE_URL}
+            allow="clipboard-write; microphone;"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              console.warn('Botpress iframe failed to load:', e);
+              setIframeError(true);
+            }}
+            onLoad={() => {
+              // Iframe loaded successfully
+              console.log('Botpress chat iframe loaded successfully');
+              setIframeError(false);
+            }}
+          />
+        )}
       </div>
     </>
   );

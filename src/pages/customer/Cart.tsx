@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, Gift, AlertCircle, Package, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, Gift, AlertCircle, Package, AlertTriangle, Share2 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ShareCartModal from '../../components/common/ShareCartModal';
 import { toast } from 'sonner@2.0.3';
 
 export default function Cart() {
@@ -24,6 +25,7 @@ export default function Cart() {
     applyPromoCode,
     removePromotion,
     redeemLoyaltyPoints,
+    canShareCart,
   } = useCart();
 
   const { user } = useAuth();
@@ -33,6 +35,7 @@ export default function Cart() {
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState('');
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [stockStatuses, setStockStatuses] = useState<Record<string, any>>({});
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Mock stock data that would normally come from API
   const mockStockData = {
@@ -548,6 +551,16 @@ export default function Cart() {
                   <ArrowRight className="ml-3 h-6 w-6" />
                 </button>
 
+                {canShareCart() && (
+                  <button
+                    onClick={() => setShowShareModal(true)}
+                    className="w-full bg-green-600 text-white py-4 px-6 rounded-xl hover:bg-green-700 transition-all duration-300 flex items-center justify-center text-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  >
+                    <Share2 className="mr-3 h-6 w-6" />
+                    Share Cart
+                  </button>
+                )}
+
                 <Link
                   to="/products"
                   className="w-full border-2 border-[#4682B4] text-[#4682B4] py-4 px-6 rounded-xl hover:bg-[#4682B4] hover:text-white transition-all duration-300 flex items-center justify-center text-lg font-semibold"
@@ -569,6 +582,12 @@ export default function Cart() {
           </div>
         </div>
       </div>
+
+      {/* Share Cart Modal */}
+      <ShareCartModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   );
 }
