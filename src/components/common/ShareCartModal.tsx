@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Share2, Copy, Check, Clock, MessageSquare, Calendar, ExternalLink, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { ShareableCartService } from '../../utils/shareable-cart';
 import { toast } from 'sonner@2.0.3';
@@ -12,6 +13,7 @@ interface ShareCartModalProps {
 
 export default function ShareCartModal({ isOpen, onClose }: ShareCartModalProps) {
   const { items, subtotal, discount_amount, promotion_discount, total, applied_promotions, loyalty_points_used, loyalty_discount } = useCart();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [shareableUrl, setShareableUrl] = useState<string>('');
   const [shareToken, setShareToken] = useState<string>('');
@@ -45,6 +47,7 @@ export default function ShareCartModal({ isOpen, onClose }: ShareCartModalProps)
       });
 
       if (result.success && result.data) {
+        // Generate URL that goes directly to checkout with shared cart state
         const url = ShareableCartService.generateShareableUrl(result.data.share_token);
         setShareableUrl(url);
         setShareToken(result.data.share_token);
@@ -257,11 +260,19 @@ export default function ShareCartModal({ isOpen, onClose }: ShareCartModalProps)
                 </button>
 
                 <button
-                  onClick={() => window.open(shareableUrl, '_blank')}
+                  onClick={() => {
+                    navigate('/checkout', { 
+                      state: { 
+                        isSharedCart: true, 
+                        sharedCartToken: shareToken 
+                      } 
+                    });
+                    onClose();
+                  }}
                   className="w-full bg-[#F8F9FA] text-[#2C3E50] py-4 px-6 rounded-xl hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#4682B4] focus:ring-offset-2 transition-all duration-300 flex items-center justify-center font-semibold border border-gray-200"
                 >
-                  <ExternalLink className="w-5 h-5 mr-2" />
-                  Preview Link
+                  <ShoppingBag className="w-5 h-5 mr-2" />
+                  Preview Checkout
                 </button>
               </div>
 

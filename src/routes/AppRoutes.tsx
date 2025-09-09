@@ -16,7 +16,6 @@ import ResetPassword from '../pages/auth/ResetPassword';
 import EmailConfirm from '../pages/auth/EmailConfirm';
 import Profile from '../pages/customer/Profile';
 import OrderHistory from '../pages/customer/OrderHistory';
-import SharedCartView from '../pages/customer/SharedCartView';
 
 // Admin Pages
 import AdminDashboard from '../pages/admin/Dashboard';
@@ -50,8 +49,6 @@ export default function AppRoutes() {
       <Route path="/cart" element={<Cart />} />
       <Route path="/favourites" element={<Favourites />} />
       
-      {/* Shared Cart - Public route for viewing shared carts */}
-      <Route path="/shared-cart/:token" element={<SharedCartView />} />
       
       {/* Auth Routes - redirect if already logged in based on role */}
       <Route 
@@ -70,14 +67,10 @@ export default function AppRoutes() {
       {/* Email Confirmation Route - Public route for email confirmation */}
       <Route path="/auth/confirm" element={<EmailConfirm />} />
 
-      {/* Checkout - Requires authentication but preserves guest cart */}
+      {/* Checkout - Requires authentication but preserves guest cart, except for shared carts */}
       <Route 
         path="/checkout" 
-        element={
-          <AuthGate requireAuth={true} preserveCart={true}>
-            <Checkout />
-          </AuthGate>
-        } 
+        element={<Checkout />} 
       />
 
       {/* User Account Routes - require authentication */}

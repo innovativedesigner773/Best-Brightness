@@ -260,7 +260,7 @@ export class ShareableCartService {
    */
   static generateShareableUrl(token: string, baseUrl?: string): string {
     const base = baseUrl || window.location.origin;
-    return `${base}/shared-cart/${token}`;
+    return `${base}/checkout?shared=${token}`;
   }
 
   /**

@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { CreditCard, Truck, MapPin, Check, ArrowLeft, Package, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { OrderService, OrderData } from '../../utils/order-service';
+import { ShareableCartService, ShareableCart } from '../../utils/shareable-cart';
 import { toast } from 'sonner@2.0.3';
 
 export default function Checkout() {
   const { items, subtotal, discount_amount, total, loyalty_points_used, loyalty_discount, clearCart } = useCart();
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  
+  // Check if this is a shared cart checkout
+  const sharedCartTokenFromUrl = searchParams.get('shared');
+  const isSharedCart = location.state?.isSharedCart || !!sharedCartTokenFromUrl;
+  const sharedCartToken = location.state?.sharedCartToken || sharedCartTokenFromUrl;
+  const [sharedCart, setSharedCart] = useState<ShareableCart | null>(null);
+  const [sharedCartLoading, setSharedCartLoading] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -34,8 +44,21 @@ export default function Checkout() {
     cardName: '',
   });
 
-  const shippingCost = total >= 500 ? 0 : 50;
-  const finalTotal = total + shippingCost;
+  // Calculate totals based on whether it's a shared cart or regular cart
+  const cartItems = isSharedCart && sharedCart ? sharedCart.cart_data.items : items;
+  const cartSubtotal = isSharedCart && sharedCart ? sharedCart.cart_data.subtotal : subtotal;
+  const cartDiscount = isSharedCart && sharedCart ? sharedCart.cart_data.discount_amount : discount_amount;
+  const cartTotal = isSharedCart && sharedCart ? sharedCart.cart_data.total : total;
+  
+  const shippingCost = cartTotal >= 500 ? 0 : 50;
+  const finalTotal = cartTotal + shippingCost;
+
+  // Load shared cart data if this is a shared cart checkout
+  useEffect(() => {
+    if (isSharedCart && sharedCartToken) {
+      loadSharedCart();
+    }
+  }, [isSharedCart, sharedCartToken]);
 
   // Sync form data when userProfile loads
   useEffect(() => {
@@ -48,6 +71,27 @@ export default function Checkout() {
       }));
     }
   }, [userProfile]);
+
+  const loadSharedCart = async () => {
+    if (!sharedCartToken) return;
+    
+    setSharedCartLoading(true);
+    try {
+      const result = await ShareableCartService.getShareableCartByToken(sharedCartToken);
+      if (result.success && result.data) {
+        setSharedCart(result.data);
+      } else {
+        toast.error(result.error || 'Failed to load shared cart');
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error loading shared cart:', error);
+      toast.error('Failed to load shared cart');
+      navigate('/');
+    } finally {
+      setSharedCartLoading(false);
+    }
+  };
 
   const steps = [
     { id: 1, name: 'Shipping', icon: Truck },
@@ -102,8 +146,8 @@ export default function Checkout() {
     try {
       // Prepare order data
       const orderData: OrderData = {
-        customer_id: userProfile?.id,
-        customer_email: user?.email || shippingInfo.email,
+        customer_id: isSharedCart ? null : userProfile?.id, // No user ID for shared cart
+        customer_email: shippingInfo.email, // Use shipping email for shared cart
         customer_info: {
           first_name: shippingInfo.firstName,
           last_name: shippingInfo.lastName,
@@ -135,12 +179,12 @@ export default function Checkout() {
           // Note: In production, never store actual card details
           card_last_four: paymentInfo.cardNumber.slice(-4),
         },
-        subtotal,
+        subtotal: cartSubtotal,
         shipping_amount: shippingCost,
-        discount_amount,
+        discount_amount: cartDiscount,
         total_amount: finalTotal,
         currency: 'USD',
-        items: items.map(item => ({
+        items: cartItems.map(item => ({
           product_id: item.product_id,
           product_snapshot: {
             name: item.name,
@@ -159,10 +203,26 @@ export default function Checkout() {
       const result = await OrderService.createOrder(orderData);
       
       if (result.success) {
-        // Clear cart and navigate to success page
-        await clearCart();
-        toast.success('Order placed successfully! Stock has been updated.');
-        navigate('/orders');
+        // If this is a shared cart, mark it as paid
+        if (isSharedCart && sharedCartToken) {
+          await ShareableCartService.markAsPaid(sharedCartToken, result.data?.id || '');
+        }
+        
+        const orderNumber = result.data?.order_number || 'Unknown';
+        toast.success(`Order ${orderNumber} placed successfully! Stock has been updated.`);
+        
+        if (isSharedCart) {
+          // For shared cart, redirect to home with success message
+          navigate('/', { 
+            state: { 
+              message: `Order ${orderNumber} placed successfully! Thank you for your purchase.`,
+            } 
+          });
+        } else {
+          // Clear cart and navigate to orders for regular checkout
+          await clearCart();
+          navigate('/orders');
+        }
       } else {
         // Show specific error message
         const errorMessage = result.error || 'Failed to create order';
@@ -182,8 +242,28 @@ export default function Checkout() {
     }
   };
 
-  if (items.length === 0) {
-    navigate('/cart');
+  // Show loading if this is a shared cart and we're still loading
+  if (isSharedCart && sharedCartLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="bg-[#4682B4] text-white p-4 rounded-2xl shadow-lg inline-block mb-4">
+            <Package className="h-8 w-8" />
+          </div>
+          <LoadingSpinner size="large" />
+          <p className="mt-4 text-[#2C3E50] font-medium">Loading shared cart...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if cart is empty
+  if (cartItems.length === 0) {
+    if (isSharedCart) {
+      navigate('/');
+    } else {
+      navigate('/cart');
+    }
     return null;
   }
 
@@ -193,17 +273,29 @@ export default function Checkout() {
         {/* Header */}
         <div className="mb-8 text-center">
           <button
-            onClick={() => navigate('/cart')}
+            onClick={() => isSharedCart ? navigate('/') : navigate('/cart')}
             className="inline-flex items-center text-[#4682B4] hover:text-[#2C3E50] mb-6 transition-colors duration-300"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Cart
+            {isSharedCart ? 'Back to Home' : 'Back to Cart'}
           </button>
           <div className="bg-[#4682B4] text-white p-4 rounded-2xl shadow-lg inline-block mb-4">
             <Package className="h-8 w-8" />
           </div>
-          <h1 className="text-4xl font-bold text-[#2C3E50] mb-2">Secure Checkout</h1>
-          <p className="text-[#2C3E50]/80 text-lg">Complete your order for professional cleaning supplies</p>
+          <h1 className="text-4xl font-bold text-[#2C3E50] mb-2">
+            {isSharedCart ? 'Shared Cart Checkout' : 'Secure Checkout'}
+          </h1>
+          <p className="text-[#2C3E50]/80 text-lg">
+            {isSharedCart 
+              ? `Complete the purchase for ${sharedCart?.cart_metadata?.original_user_name || 'this shared cart'}`
+              : 'Complete your order for professional cleaning supplies'
+            }
+          </p>
+          {isSharedCart && sharedCart?.cart_metadata?.message && (
+            <p className="text-[#4682B4] text-sm italic mt-2">
+              "{sharedCart.cart_metadata.message}"
+            </p>
+          )}
         </div>
 
         {/* Progress Steps */}
@@ -555,7 +647,7 @@ export default function Checkout() {
               
               {/* Items */}
               <div className="space-y-4 mb-6 max-h-80 overflow-y-auto">
-                {items.map((item) => (
+                {cartItems.map((item) => (
                   <div key={item.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <ImageWithFallback
                       src={item.image_url || 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=60&h=60&fit=crop'}
@@ -575,13 +667,13 @@ export default function Checkout() {
               <div className="border-t border-gray-200 pt-6 space-y-4">
                 <div className="flex justify-between text-lg">
                   <span className="text-[#2C3E50]/80">Subtotal</span>
-                  <span className="font-semibold text-[#2C3E50]">R{subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-[#2C3E50]">R{cartSubtotal.toFixed(2)}</span>
                 </div>
                 
-                {discount_amount > 0 && (
+                {cartDiscount > 0 && (
                   <div className="flex justify-between text-lg">
                     <span className="text-green-600">Discounts</span>
-                    <span className="text-green-600 font-semibold">-R{discount_amount.toFixed(2)}</span>
+                    <span className="text-green-600 font-semibold">-R{cartDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 

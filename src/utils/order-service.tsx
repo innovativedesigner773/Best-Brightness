@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner@2.0.3';
+import { generateUniqueId } from './id-generator';
 
 export interface OrderItem {
   product_id: string;
@@ -25,6 +27,8 @@ export interface OrderData {
   currency?: string;
   notes?: string;
   items: OrderItem[];
+  order_number?: string; // Optional - will be generated if not provided
+  isSharedCartOrder?: boolean; // Flag to indicate if this is a shared cart order
 }
 
 export interface OrderResult {
@@ -34,6 +38,27 @@ export interface OrderResult {
 }
 
 export class OrderService {
+  /**
+   * Create a Supabase client with service role key for admin operations
+   */
+  private static getServiceRoleClient() {
+    const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || 
+                       process.env.REACT_APP_SUPABASE_URL || 
+                       process.env.VITE_SUPABASE_URL ||
+                       process.env.SUPABASE_URL;
+    
+    const serviceRoleKey = import.meta.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || 
+                          process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || 
+                          process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ||
+                          process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Service role key not available for shared cart orders');
+    }
+
+    return createClient(supabaseUrl, serviceRoleKey);
+  }
+
   /**
    * Check if there's sufficient stock for all items in the order
    */
@@ -91,6 +116,10 @@ export class OrderService {
     try {
       console.log('🛒 Creating order:', orderData);
 
+      // Generate unique order number if not provided
+      const orderNumber = orderData.order_number || generateUniqueId('ORDER');
+      console.log('📋 Generated order number:', orderNumber);
+
       // First, check stock availability
       if (orderData.items && orderData.items.length > 0) {
         const stockCheck = await this.checkStockAvailability(orderData.items);
@@ -102,10 +131,19 @@ export class OrderService {
         }
       }
 
+      // Choose the appropriate Supabase client
+      // For shared cart orders, use service role to bypass RLS
+      const client = orderData.isSharedCartOrder ? this.getServiceRoleClient() : supabase;
+      
+      if (orderData.isSharedCartOrder) {
+        console.log('🔑 Using service role client for shared cart order');
+      }
+
       // Create the order record (using only columns that exist in the actual database)
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await client
         .from('orders')
         .insert({
+          order_number: orderNumber,
           customer_id: orderData.customer_id,
           customer_email: orderData.customer_email,
           customer_info: orderData.customer_info,
@@ -157,7 +195,7 @@ export class OrderService {
 
         console.log('📦 Creating order items:', orderItems);
         
-        const { error: itemsError } = await supabase
+        const { error: itemsError } = await client
           .from('order_items')
           .insert(orderItems);
 
@@ -176,7 +214,7 @@ export class OrderService {
       }
 
       // Update stock levels when order is completed
-      const stockResult = await this.updateStockLevels(order.id);
+      const stockResult = await this.updateStockLevels(order.id, client);
       if (!stockResult.success) {
         console.warn('⚠️ Order created but stock update failed:', stockResult.error);
         // Don't fail the order creation if stock update fails
@@ -184,7 +222,10 @@ export class OrderService {
 
       return {
         success: true,
-        data: order
+        data: {
+          ...order,
+          order_number: orderNumber
+        }
       };
 
     } catch (error) {
@@ -314,12 +355,15 @@ export class OrderService {
   /**
    * Update stock levels when order is completed
    */
-  static async updateStockLevels(orderId: string): Promise<OrderResult> {
+  static async updateStockLevels(orderId: string, client?: any): Promise<OrderResult> {
     try {
       console.log('📦 Updating stock levels for order:', orderId);
 
+      // Use provided client or default to regular supabase client
+      const dbClient = client || supabase;
+      
       // Get order items
-      const { data: orderItems, error: itemsError } = await supabase
+      const { data: orderItems, error: itemsError } = await dbClient
         .from('order_items')
         .select('product_id, quantity')
         .eq('order_id', orderId);
@@ -344,7 +388,7 @@ export class OrderService {
       for (const item of orderItems) {
         try {
           // First, check current stock
-          const { data: product, error: fetchError } = await supabase
+          const { data: product, error: fetchError } = await dbClient
             .from('products')
             .select('stock_quantity, name')
             .eq('id', item.product_id)
@@ -370,7 +414,7 @@ export class OrderService {
           }
 
           // Update stock
-          const { error: stockError } = await supabase
+          const { error: stockError } = await dbClient
             .from('products')
             .update({
               stock_quantity: newStock,
