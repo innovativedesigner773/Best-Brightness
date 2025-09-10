@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { FavouritesProvider } from './contexts/FavouritesContext';
 import { OfflineProvider } from './contexts/OfflineContext';
+import { StockNotificationsProvider } from './contexts/StockNotificationsContext';
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -106,9 +107,11 @@ export default function App() {
             <ErrorBoundary>
               <CartProvider>
                 <FavouritesProvider>
-                  <AppContent />
-                  {/* Fallback iframe-based chat to avoid CDN script issues */}
-                  <BotpressIframeChat />
+                  <StockNotificationsProvider>
+                    <AppContent />
+                    {/* Fallback iframe-based chat to avoid CDN script issues */}
+                    <BotpressIframeChat />
+                  </StockNotificationsProvider>
                 </FavouritesProvider>
               </CartProvider>
             </ErrorBoundary>

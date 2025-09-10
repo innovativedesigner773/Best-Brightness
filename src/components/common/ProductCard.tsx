@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Star, Eye, Heart, Percent, Loader2, AlertTriangle, Package, Edit, Trash2 } from 'lucide-react';
+import { ShoppingCart, Star, Eye, Heart, Percent, Loader2, AlertTriangle, Package, Edit, Trash2, Bell, BellOff } from 'lucide-react';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useCart } from '../../contexts/CartContext';
 import { useFavourites } from '../../contexts/FavouritesContext';
+import { useStockNotifications } from '../../contexts/StockNotificationsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 
 export interface Product {
@@ -42,8 +44,13 @@ interface ProductCardProps {
 export default function ProductCard({ product, featured = false, className = '', isAdmin = false, onEdit, onDelete, linkTo }: ProductCardProps) {
   const { addToCart } = useCart();
   const { addToFavourites, removeFromFavourites, isFavourite } = useFavourites();
+  const { addStockNotification, hasNotificationForProduct } = useStockNotifications();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFavouriteLoading, setIsFavouriteLoading] = useState(false);
+  const [isRemindMeLoading, setIsRemindMeLoading] = useState(false);
+  const [showRemindMeModal, setShowRemindMeModal] = useState(false);
+  const [remindMeEmail, setRemindMeEmail] = useState('');
 
   const discount = product.original_price 
     ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
@@ -91,6 +98,49 @@ export default function ProductCard({ product, featured = false, className = '',
       console.error('Error toggling favourite:', error);
     } finally {
       setIsFavouriteLoading(false);
+    }
+  };
+
+  const handleRemindMe = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) {
+      // Show login prompt or redirect to login
+      alert('Please log in to set up stock notifications');
+      return;
+    }
+
+    if (hasNotificationForProduct(productId)) {
+      alert('You already have a notification set up for this product!');
+      return;
+    }
+
+    setShowRemindMeModal(true);
+    setRemindMeEmail(user.email || '');
+  };
+
+  const handleSubmitRemindMe = async () => {
+    if (!remindMeEmail.trim()) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    setIsRemindMeLoading(true);
+    try {
+      const success = await addStockNotification(productId, remindMeEmail.trim());
+      if (success) {
+        alert('Stock notification set up successfully! We\'ll email you when this product is back in stock.');
+        setShowRemindMeModal(false);
+        setRemindMeEmail('');
+      } else {
+        alert('Failed to set up notification. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error setting up stock notification:', error);
+      alert('Failed to set up notification. Please try again.');
+    } finally {
+      setIsRemindMeLoading(false);
     }
   };
 
@@ -302,12 +352,38 @@ export default function ProductCard({ product, featured = false, className = '',
                   Delete
                 </button>
               </div>
+            ) : !inStock ? (
+              // Show "Remind Me" button for out-of-stock products
+              <button
+                onClick={handleRemindMe}
+                disabled={isRemindMeLoading || hasNotificationForProduct(productId)}
+                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
+                  isRemindMeLoading || hasNotificationForProduct(productId)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
+                }`}
+              >
+                {isRemindMeLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : hasNotificationForProduct(productId) ? (
+                  <BellOff className="h-4 w-4 mr-2" />
+                ) : (
+                  <Bell className="h-4 w-4 mr-2" />
+                )}
+                {isRemindMeLoading 
+                  ? 'Setting up...' 
+                  : hasNotificationForProduct(productId)
+                  ? 'Notification Set'
+                  : 'Remind Me When Available'
+                }
+              </button>
             ) : (
+              // Show "Add to Cart" button for in-stock products
               <button
                 onClick={handleAddToCart}
-                disabled={!inStock || isLoading}
+                disabled={isLoading}
                 className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                  !inStock || isLoading
+                  isLoading
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : stockInfo.urgent
                     ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white hover:from-red-600 hover:to-orange-600 animate-pulse'
@@ -319,9 +395,7 @@ export default function ProductCard({ product, featured = false, className = '',
                 ) : (
                   <ShoppingCart className="h-4 w-4 mr-2" />
                 )}
-                {!inStock 
-                  ? 'Out of Stock' 
-                  : isLoading 
+                {isLoading 
                   ? 'Adding...' 
                   : stockInfo.urgent 
                   ? 'Buy Now!' 
@@ -372,6 +446,53 @@ export default function ProductCard({ product, featured = false, className = '',
           )}
         </div>
       </Link>
+
+      {/* Remind Me Modal */}
+      {showRemindMeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Get Notified When Back in Stock
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              We'll email you when "{product.name}" becomes available again.
+            </p>
+            <div className="mb-4">
+              <label htmlFor="remind-email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="remind-email"
+                value={remindMeEmail}
+                onChange={(e) => setRemindMeEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4682B4] focus:border-transparent"
+                placeholder="Enter your email address"
+                disabled={isRemindMeLoading}
+              />
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowRemindMeModal(false);
+                  setRemindMeEmail('');
+                }}
+                disabled={isRemindMeLoading}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitRemindMe}
+                disabled={isRemindMeLoading}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 rounded-md hover:from-orange-600 hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
+              >
+                {isRemindMeLoading ? 'Setting up...' : 'Set Notification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

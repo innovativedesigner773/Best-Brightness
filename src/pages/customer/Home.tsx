@@ -376,7 +376,6 @@ export default function Home() {
         `)
         .eq('is_active', true)
         .eq('is_featured', true)
-        .gt('stock_quantity', 0)
         .order('created_at', { ascending: false })
         .limit(6);
 

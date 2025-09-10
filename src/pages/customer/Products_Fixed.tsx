@@ -74,7 +74,7 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState('featured');
-  const [onlyInStock, setOnlyInStock] = useState(true);
+  const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyOnSale, setOnlyOnSale] = useState(searchParams.get('on_sale') === 'true');
 
   // Fetch real products from Supabase

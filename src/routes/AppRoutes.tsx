@@ -9,6 +9,7 @@ import Products from '../pages/customer/Products';
 import ProductDetails from '../pages/customer/ProductDetails';
 import Cart from '../pages/customer/Cart';
 import Favourites from '../pages/customer/Favourites';
+import Notifications from '../pages/customer/Notifications';
 import Checkout from '../pages/customer/Checkout';
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
@@ -48,6 +49,7 @@ export default function AppRoutes() {
       {/* Cart and Favourites - Public but enhanced experience for authenticated users */}
       <Route path="/cart" element={<Cart />} />
       <Route path="/favourites" element={<Favourites />} />
+      <Route path="/notifications" element={<Notifications />} />
       
       
       {/* Auth Routes - redirect if already logged in based on role */}

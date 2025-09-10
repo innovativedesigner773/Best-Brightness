@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, Menu, X, LogOut, Settings, Package, BarChart3, Users, Sparkles, Heart } from 'lucide-react';
+import { Search, User, Menu, X, LogOut, Settings, Package, BarChart3, Users, Sparkles, Heart, Bell } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFavourites } from '../../contexts/FavouritesContext';
+import { useStockNotifications } from '../../contexts/StockNotificationsContext';
 import CartIcon from './CartIcon';
 import ShareableCartNotifications from './ShareableCartNotifications';
 
@@ -11,6 +12,7 @@ export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, profile, signOut, isAtLeastRole } = useAuth();
   const { items: favouriteItems } = useFavourites();
+  const { notifications } = useStockNotifications();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -153,6 +155,22 @@ export default function Navbar() {
               )}
             </Link>
 
+            {/* Stock Notifications Icon - Only for authenticated users */}
+            {user && (
+              <Link
+                to="/notifications"
+                className="hidden md:flex relative p-2 text-[#2C3E50] hover:text-[#4682B4] hover:bg-[#F8F9FA] rounded-xl transition-all duration-300 group"
+                title="Stock Notifications"
+              >
+                <Bell className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                {notifications.filter(n => !n.is_notified).length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                    {notifications.filter(n => !n.is_notified).length > 99 ? '99+' : notifications.filter(n => !n.is_notified).length}
+                  </span>
+                )}
+              </Link>
+            )}
+
             {/* Cart Icon - Always visible */}
             <CartIcon className="hidden md:block" />
 
@@ -205,6 +223,14 @@ export default function Navbar() {
                         >
                           <Heart className="h-4 w-4 mr-3 text-[#87CEEB]" />
                           My Favourites ({favouriteItems.length})
+                        </Link>
+                        <Link
+                          to="/notifications"
+                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                          onClick={() => setIsProfileOpen(false)}
+                        >
+                          <Bell className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                          Stock Notifications ({notifications.filter(n => !n.is_notified).length})
                         </Link>
                         <Link
                           to="/orders"
@@ -287,6 +313,27 @@ export default function Navbar() {
                   )}
                 </Link>
               </div>
+
+              {/* Mobile Stock Notifications - Only for authenticated users */}
+              {user && (
+                <div className="px-4 pb-2">
+                  <Link
+                    to="/notifications"
+                    className="flex items-center justify-between w-full p-3 bg-[#F8F9FA] hover:bg-[#B0E0E6]/20 rounded-xl transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <Bell className="h-5 w-5 text-[#4682B4] mr-3" />
+                      <span className="font-medium text-[#2C3E50]">Stock Notifications</span>
+                    </div>
+                    {notifications.filter(n => !n.is_notified).length > 0 && (
+                      <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                        {notifications.filter(n => !n.is_notified).length}
+                      </span>
+                    )}
+                  </Link>
+                </div>
+              )}
 
               {/* Mobile Cart */}
               <div className="px-4 pb-2">

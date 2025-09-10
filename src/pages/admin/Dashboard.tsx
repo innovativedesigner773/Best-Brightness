@@ -15,13 +15,15 @@ import {
   Database,
   TestTube,
   Zap,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react';
 
 // Import test components
 import DatabaseFixVerification from '../../components/admin/DatabaseFixVerification';
 import RealTimeRegistrationTest from '../../components/admin/RealTimeRegistrationTest';
 import QuickRegistrationTest from '../../components/admin/QuickRegistrationTest';
+import StockNotificationManager from '../../components/admin/StockNotificationManager';
 
 // Mock data for dashboard
 const mockStats = {
@@ -82,6 +84,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="testing" className="flex items-center gap-2">
               <TestTube className="h-4 w-4" />
               Registration Testing
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Stock Notifications
             </TabsTrigger>
             <TabsTrigger value="database" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
@@ -269,6 +275,20 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Stock Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl text-[#2C3E50] mb-2">Stock Notification Management</h2>
+                <p className="text-[#6C757D]">
+                  Manage and send stock availability notifications to customers who requested to be notified.
+                </p>
+              </div>
+
+              <StockNotificationManager />
             </div>
           </TabsContent>
 
