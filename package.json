@@ -73,6 +73,7 @@
         "setup": "node src/scripts/setup.js",
         "offline-setup": "node src/scripts/offline-setup.js",
         "quick-start": "node src/fix-and-start.js",
+        "process-notifications": "node src/scripts/process-pending-notifications.js",
         "preview": "vite preview",
         "type-check": "tsc --noEmit"
     }

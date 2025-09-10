@@ -16,7 +16,7 @@ BEGIN
     -- Only proceed if stock quantity increased (product came back in stock)
     IF NEW.stock_quantity > OLD.stock_quantity AND NEW.stock_quantity > 0 THEN
         -- Get product details
-        SELECT id, name, price, image_url, stock_quantity
+        SELECT id, name, price, images, stock_quantity
         INTO product_record
         FROM products
         WHERE id = NEW.id;
@@ -36,7 +36,7 @@ BEGIN
                 'product_id', NEW.id,
                 'product_name', product_record.name,
                 'product_price', product_record.price,
-                'product_image', COALESCE(product_record.image_url, ''),
+                'product_image', COALESCE((product_record.images->>0), ''),
                 'created_at', notification_record.created_at
             );
             

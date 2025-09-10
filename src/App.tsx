@@ -19,6 +19,7 @@ import AppLoading from './components/common/AppLoading';
 import AppRoutes from './routes/AppRoutes';
 import BotpressIframeChat from './components/common/BotpressIframeChat';
 import { useSVGErrorHandler } from './utils/svg-error-handler';
+import { startAutomaticProcessing } from './services/notificationQueueService';
 
 // Config
 import { queryClient } from './config/queryClient';
@@ -34,6 +35,17 @@ function AppContent() {
   
   // Initialize SVG error handling for the entire app
   useSVGErrorHandler();
+
+  // Start automatic notification processing
+  React.useEffect(() => {
+    console.log('🔄 Starting automatic notification processing...');
+    const stopProcessing = startAutomaticProcessing(30000); // Process every 30 seconds
+    
+    return () => {
+      console.log('🛑 Stopping automatic notification processing...');
+      stopProcessing();
+    };
+  }, []);
 
   console.log('🎯 App Content Render:', { 
     user: user?.id || null, 
