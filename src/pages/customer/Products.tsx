@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { Search, Filter, Grid, List, Star, ShoppingCart, Percent, Package, AlertTriangle, X, Tag } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
@@ -61,9 +61,12 @@ interface DisplayProduct {
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [products, setProducts] = useState<DisplayProduct[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchTimeout, setFetchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -84,6 +87,14 @@ export default function Products() {
         setLoading(true);
         console.log('📦 Fetching products for customer view...');
         
+        // Set a timeout to prevent infinite loading
+        const timeout = setTimeout(() => {
+          console.warn('⚠️ Products fetch timeout - forcing loading to false');
+          setLoading(false);
+        }, 10000); // 10 second timeout
+        
+        setFetchTimeout(timeout);
+        
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select(`
@@ -92,6 +103,12 @@ export default function Products() {
           `)
           .eq('is_active', true)
           .order('created_at', { ascending: false });
+
+        // Clear timeout if request completes
+        if (fetchTimeout) {
+          clearTimeout(fetchTimeout);
+          setFetchTimeout(null);
+        }
 
         if (productsError) {
           console.error('❌ Error fetching products:', productsError);
@@ -131,16 +148,141 @@ export default function Products() {
         const uniqueCategories = [...new Set(displayProducts.map(p => p.category))].filter(Boolean);
         setCategories(uniqueCategories);
         
+        // Reset retry count on successful fetch
+        setRetryCount(0);
+        
       } catch (error) {
         console.error('Error fetching products:', error);
         console.error('Failed to load products. Please try again.');
+        
+        // Retry mechanism - retry up to 3 times
+        if (retryCount < 3) {
+          console.log(`🔄 Retrying products fetch (attempt ${retryCount + 1}/3)...`);
+          setRetryCount(prev => prev + 1);
+          // Retry after a short delay
+          setTimeout(() => {
+            fetchProducts();
+          }, 1000 * (retryCount + 1)); // Exponential backoff
+        } else {
+          // Reset products and categories on final error to prevent stale data
+          setProducts([]);
+          setCategories([]);
+          setRetryCount(0); // Reset retry count
+        }
       } finally {
         setLoading(false);
+        // Clear timeout in finally block
+        if (fetchTimeout) {
+          clearTimeout(fetchTimeout);
+          setFetchTimeout(null);
+        }
       }
     };
 
     fetchProducts();
-  }, []);
+    
+    // Cleanup function to clear timeout
+    return () => {
+      if (fetchTimeout) {
+        clearTimeout(fetchTimeout);
+        setFetchTimeout(null);
+      }
+    };
+  }, []); // Keep empty dependency array for initial load
+
+  // Add effect to handle component remounting/navigation issues
+  useEffect(() => {
+    // If we have no products and we're not loading, trigger a fresh fetch
+    // This handles cases where the component doesn't properly remount after navigation
+    if (products.length === 0 && !loading) {
+      console.log('🔄 Products component detected empty state - triggering fresh data load');
+      const fetchProducts = async () => {
+        try {
+          setLoading(true);
+          console.log('📦 Re-fetching products after detecting empty state...');
+          
+          const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select(`
+              *,
+              category:categories(id, name, slug, description)
+            `)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+          if (productsError) {
+            console.error('❌ Error re-fetching products:', productsError);
+            throw new Error(`Failed to fetch products: ${productsError.message}`);
+          }
+
+          console.log('✅ Products re-fetched after empty state detection:', productsData);
+          
+          // Transform real products to display format
+          const displayProducts: DisplayProduct[] = (productsData || []).map((product: Product) => {
+            const stockCount = product.stock_quantity || 0;
+            const isInStock = stockCount > 0;
+            const hasDiscount = product.compare_at_price && product.compare_at_price > product.price;
+            
+            return {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              original_price: hasDiscount ? product.compare_at_price : undefined,
+              image_url: product.images && product.images.length > 0 ? product.images[0] : '',
+              rating: 4.5,
+              reviews_count: Math.floor(Math.random() * 100) + 10,
+              promotion_badge: hasDiscount ? `${Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)}% OFF` : undefined,
+              promotion_discount: hasDiscount ? product.compare_at_price! - product.price : undefined,
+              in_stock: isInStock,
+              stock_count: stockCount,
+              category: product.category?.name || 'Uncategorized',
+              sku: product.sku,
+              description: product.description,
+              brand: 'Best Brightness',
+            };
+          });
+
+          setProducts(displayProducts);
+          
+          // Extract unique categories
+          const uniqueCategories = [...new Set(displayProducts.map(p => p.category))].filter(Boolean);
+          setCategories(uniqueCategories);
+          
+        } catch (error) {
+          console.error('Error re-fetching products:', error);
+          setProducts([]);
+          setCategories([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchProducts();
+    }
+  }, [products.length, loading]); // Monitor products.length and loading state
+
+  // Add effect to handle location changes (navigation)
+  useEffect(() => {
+    // When navigating to products page, ensure we have fresh data
+    if (location.pathname === '/products' && products.length === 0 && !loading) {
+      console.log('🔄 Navigation to products page detected - ensuring fresh data');
+      // Reset state to trigger fresh fetch
+      setProducts([]);
+      setCategories([]);
+      setLoading(true);
+    }
+  }, [location.pathname, products.length, loading]);
+
+  // Cleanup effect to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Clear any pending timeouts when component unmounts
+      if (fetchTimeout) {
+        clearTimeout(fetchTimeout);
+        setFetchTimeout(null);
+      }
+    };
+  }, [fetchTimeout]);
 
   // Update URL when filters change
   useEffect(() => {
