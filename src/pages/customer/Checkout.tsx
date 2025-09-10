@@ -7,7 +7,8 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { OrderService, OrderData } from '../../utils/order-service';
 import { ShareableCartService, ShareableCart } from '../../utils/shareable-cart';
-import { toast } from 'sonner@2.0.3';
+import { sendOrderConfirmation } from '../../utils/order-email-integration';
+import { toast } from 'sonner';
 
 export default function Checkout() {
   const { items, subtotal, discount_amount, total, loyalty_points_used, loyalty_discount, clearCart } = useCart();
@@ -209,7 +210,64 @@ export default function Checkout() {
         }
         
         const orderNumber = result.data?.order_number || 'Unknown';
-        toast.success(`Order ${orderNumber} placed successfully! Stock has been updated.`);
+        const orderId = result.data?.id;
+        
+        // Send order confirmation email
+        try {
+          console.log('📧 Sending order confirmation email...');
+          
+          // Prepare order data for email
+          const emailOrderData = {
+            id: orderId,
+            customer_email: shippingInfo.email,
+            customer_name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+            order_number: orderNumber,
+            order_date: new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            status: 'Processing',
+            payment_method: 'Credit Card', // You can make this dynamic based on payment info
+            items: cartItems.map(item => ({
+              product_id: item.product_id,
+              name: item.name,
+              sku: item.product_id, // You might want to add SKU to your product data
+              quantity: item.quantity,
+              price: item.price,
+              image_url: item.image_url || 'https://via.placeholder.com/300x300?text=Product+Image'
+            })),
+            subtotal: subtotal,
+            shipping_cost: 0, // Free shipping for now
+            discount_amount: discount_amount || 0,
+            discount_code: '', // Add discount code if applicable
+            tax_amount: 0, // You can calculate tax if needed
+            total_amount: total,
+            shipping_address: {
+              name: `${shippingInfo.firstName} ${shippingInfo.lastName}`,
+              line1: shippingInfo.address,
+              line2: '',
+              city: shippingInfo.city,
+              state: shippingInfo.province,
+              zip: shippingInfo.postalCode,
+              country: 'South Africa' // Default to South Africa
+            },
+            estimated_delivery_days: 3
+          };
+          
+          const emailResult = await sendOrderConfirmation(emailOrderData);
+          
+          if (emailResult.success) {
+            console.log('✅ Order confirmation email sent successfully');
+            toast.success(`Order ${orderNumber} placed successfully! Confirmation email sent.`);
+          } else {
+            console.warn('⚠️ Order placed but email failed:', emailResult.error);
+            toast.success(`Order ${orderNumber} placed successfully! (Email notification failed)`);
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending order confirmation email:', emailError);
+          toast.success(`Order ${orderNumber} placed successfully! (Email notification failed)`);
+        }
         
         if (isSharedCart) {
           // For shared cart, redirect to home with success message
