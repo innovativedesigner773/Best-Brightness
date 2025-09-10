@@ -29,6 +29,7 @@ export interface OrderData {
   items: OrderItem[];
   order_number?: string; // Optional - will be generated if not provided
   isSharedCartOrder?: boolean; // Flag to indicate if this is a shared cart order
+  isCashierOrder?: boolean; // Flag to indicate if this is a cashier POS order
 }
 
 export interface OrderResult {
@@ -132,11 +133,13 @@ export class OrderService {
       }
 
       // Choose the appropriate Supabase client
-      // For shared cart orders, use service role to bypass RLS
-      const client = orderData.isSharedCartOrder ? this.getServiceRoleClient() : supabase;
+      // For shared cart orders or cashier orders, use service role to bypass RLS
+      const client = (orderData.isSharedCartOrder || orderData.isCashierOrder) ? this.getServiceRoleClient() : supabase;
       
       if (orderData.isSharedCartOrder) {
         console.log('🔑 Using service role client for shared cart order');
+      } else if (orderData.isCashierOrder) {
+        console.log('🔑 Using service role client for cashier POS order');
       }
 
       // Create the order record (using only columns that exist in the actual database)

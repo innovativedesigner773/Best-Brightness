@@ -22,6 +22,8 @@ import {
 import { supabase } from '../../lib/supabase';
 import { BrowserMultiFormatReader, type Result } from '@zxing/browser';
 import CashierLayout from '../../components/cashier/CashierLayout';
+import { useAuth } from '../../contexts/AuthContext';
+import { OrderService, type OrderData } from '../../utils/order-service';
 
 type CartItem = {
   id: number;
@@ -42,6 +44,7 @@ type OnScreenKeyboardProps = {
 type Customer = { name: string; email: string; points: number } | null;
 
 export default function EnhancedPOS() {
+  const { userProfile } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer>(null);
   const [barcodeInput, setBarcodeInput] = useState<string>('');
@@ -61,6 +64,8 @@ export default function EnhancedPOS() {
   const [changeDue, setChangeDue] = useState(0);
   const [transactionId, setTransactionId] = useState('');
   const [transactionDate, setTransactionDate] = useState<Date | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [orderRecord, setOrderRecord] = useState<any>(null);
   const receiptRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
@@ -223,15 +228,96 @@ export default function EnhancedPOS() {
   const discountAmount = subtotal * (discountPercent / 100);
   const total = subtotal - discountAmount;
 
-  const handleConfirmPayment = () => {
-    const amountNumber = Number(paymentAmount || '0');
-    const safeAmount = isNaN(amountNumber) ? 0 : amountNumber;
-    const computedChange = paymentMethod === 'cash' ? Math.max(safeAmount - total, 0) : 0;
-    setChangeDue(Number(computedChange.toFixed(2)));
-    setTransactionId(`TX-${Date.now()}`);
-    setTransactionDate(new Date());
-    setShowPaymentModal(false);
-    setShowReceipt(true);
+  const handleConfirmPayment = async () => {
+    if (isProcessingPayment) return;
+    
+    setIsProcessingPayment(true);
+    
+    try {
+      const amountNumber = Number(paymentAmount || '0');
+      const safeAmount = isNaN(amountNumber) ? 0 : amountNumber;
+      const computedChange = paymentMethod === 'cash' ? Math.max(safeAmount - total, 0) : 0;
+      
+      // Generate transaction ID
+      const txId = `POS-${Date.now()}`;
+      setTransactionId(txId);
+      setTransactionDate(new Date());
+      setChangeDue(Number(computedChange.toFixed(2)));
+      
+      // Record the sale in the database
+      const orderData: OrderData = {
+        customer_id: customer ? null : userProfile?.id, // Use cashier as customer if no customer selected
+        customer_email: customer?.email || userProfile?.email || 'pos@bestbrightness.com',
+        customer_info: customer ? {
+          name: customer.name,
+          email: customer.email,
+          phone: null
+        } : {
+          name: `${userProfile?.first_name || 'Cashier'} ${userProfile?.last_name || 'User'}`,
+          email: userProfile?.email || 'pos@bestbrightness.com',
+          phone: null
+        },
+        billing_address: null,
+        shipping_address: null,
+        payment_method: paymentMethod,
+        payment_details: {
+          amount_tendered: safeAmount,
+          change_given: computedChange,
+          transaction_id: txId,
+          cashier_id: userProfile?.id,
+          cashier_name: `${userProfile?.first_name || 'Cashier'} ${userProfile?.last_name || 'User'}`,
+          pos_location: 'Store POS'
+        },
+        subtotal: subtotal,
+        tax_amount: 0, // No tax for POS sales
+        shipping_amount: 0,
+        discount_amount: discountAmount,
+        total_amount: total,
+        currency: 'ZAR',
+        notes: `POS Sale - ${paymentMethod.toUpperCase()} Payment`,
+        items: cartItems.map(item => ({
+          product_id: productsByBarcode[item.barcode]?.id || null,
+          product_snapshot: {
+            name: item.name,
+            price: item.price,
+            image_url: null,
+            description: `${item.category} - SKU: ${item.sku || 'N/A'}`,
+            category: item.category,
+            barcode: item.barcode
+          },
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity,
+        })),
+        isSharedCartOrder: false,
+        isCashierOrder: true // Flag to identify cashier orders
+      };
+
+      console.log('🛒 Recording POS sale:', orderData);
+      
+      // Create the order in the database
+      const result = await OrderService.createOrder(orderData);
+      
+      if (result.success) {
+        console.log('✅ POS sale recorded successfully:', result.data);
+        setOrderRecord(result.data);
+        
+        // Close payment modal and show receipt
+        setShowPaymentModal(false);
+        setShowReceipt(true);
+      } else {
+        console.error('❌ Failed to record POS sale:', result.error);
+        alert(`Failed to record sale: ${result.error}`);
+        return;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error processing payment:', error);
+      alert('Error processing payment. Please try again.');
+      return;
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   const handlePrintReceipt = () => {
@@ -729,8 +815,27 @@ export default function EnhancedPOS() {
                 )}
 
                 <div className="flex space-x-4 pt-2">
-                  <button onClick={() => setShowPaymentModal(false)} className="flex-1 bg-gray-200 text-[#2C3E50] py-3 px-4 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold">Cancel</button>
-                  <button onClick={handleConfirmPayment} className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold">Confirm</button>
+                  <button 
+                    onClick={() => setShowPaymentModal(false)} 
+                    disabled={isProcessingPayment}
+                    className="flex-1 bg-gray-200 text-[#2C3E50] py-3 px-4 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleConfirmPayment} 
+                    disabled={isProcessingPayment}
+                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isProcessingPayment ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      'Confirm Payment'
+                    )}
+                  </button>
                 </div>
                 <p className="text-xs text-[#2C3E50]/70">Note: This is a demo payment. No data will be saved.</p>
               </div>
@@ -751,26 +856,31 @@ export default function EnhancedPOS() {
 
               <div ref={receiptRef} className="text-sm text-[#2C3E50]">
                 <div className="text-center mb-2">
-                  <div className="font-extrabold">BEST BRIGHTNESS</div>
-                  <div className="small">Demo POS Receipt</div>
+                  <div className="font-extrabold text-[#4682B4]">BEST BRIGHTNESS</div>
+                  <div className="small text-[#2C3E50]/80">Point of Sale Receipt</div>
+                  <div className="small text-[#4682B4]">Your Bright Shopping Experience</div>
                 </div>
                 <div className="hr" />
-                <div className="flex justify-between text-xs"><span>ID</span><span>{transactionId}</span></div>
+                <div className="flex justify-between text-xs"><span>Order #</span><span>{orderRecord?.order_number || transactionId}</span></div>
                 <div className="flex justify-between text-xs"><span>Date</span><span>{transactionDate ? transactionDate.toLocaleString() : ''}</span></div>
-                <div className="flex justify-between text-xs"><span>Cashier</span><span>Demo User</span></div>
+                <div className="flex justify-between text-xs"><span>Cashier</span><span>{userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'System User'}</span></div>
+                {customer && (
+                  <div className="flex justify-between text-xs"><span>Customer</span><span>{customer.name}</span></div>
+                )}
                 <div className="hr" />
                 {cartItems.map((item) => (
                   <div key={item.id}>
                     <div className="flex justify-between"><span>{item.name} x{item.quantity}</span><span>R{(item.price * item.quantity).toFixed(2)}</span></div>
+                    <div className="text-xs text-[#2C3E50]/70 ml-2">R{item.price.toFixed(2)} each</div>
                   </div>
                 ))}
                 <div className="hr" />
                 <div className="flex justify-between"><span>Subtotal</span><span>R{subtotal.toFixed(2)}</span></div>
                 {discountPercent > 0 && (
-                  <div className="flex justify-between text-xs"><span>Discount {discountPercent}%</span><span>-R{discountAmount.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-xs text-green-600"><span>Discount {discountPercent}%</span><span>-R{discountAmount.toFixed(2)}</span></div>
                 )}
-                <div className="flex justify-between font-bold"><span>Total</span><span>R{total.toFixed(2)}</span></div>
-                <div className="flex justify-between text-xs"><span>Method</span><span>{paymentMethod.toUpperCase()}</span></div>
+                <div className="flex justify-between font-bold text-[#4682B4]"><span>Total</span><span>R{total.toFixed(2)}</span></div>
+                <div className="flex justify-between text-xs"><span>Payment Method</span><span>{paymentMethod.toUpperCase()}</span></div>
                 {paymentMethod === 'cash' && (
                   <>
                     <div className="flex justify-between text-xs"><span>Amount Tendered</span><span>R{Number(paymentAmount || '0').toFixed(2)}</span></div>
@@ -778,7 +888,11 @@ export default function EnhancedPOS() {
                   </>
                 )}
                 <div className="hr" />
-                <div className="text-center text-xs">Thank you for shopping!</div>
+                <div className="text-center text-xs text-[#4682B4]">Thank you for shopping with us!</div>
+                <div className="text-center text-xs text-[#2C3E50]/70">Visit us again soon</div>
+                {orderRecord && (
+                  <div className="text-center text-xs text-[#2C3E50]/50 mt-2">Order ID: {orderRecord.id}</div>
+                )}
               </div>
 
               <div className="mt-4 flex space-x-3">
@@ -811,9 +925,25 @@ export default function EnhancedPOS() {
                   <Printer className="h-5 w-5 mr-2" />
                   Print
                 </button>
-                <button onClick={() => { setShowReceipt(false); setCartItems([]); setPaymentAmount(''); setPaymentMethod('cash'); }} className="flex-1 bg-gray-200 text-[#2C3E50] py-2 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold">Done</button>
+                <button 
+                  onClick={() => { 
+                    setShowReceipt(false); 
+                    setCartItems([]); 
+                    setPaymentAmount(''); 
+                    setPaymentMethod('cash'); 
+                    setDiscountPercent(0);
+                    setCustomer(null);
+                    setOrderRecord(null);
+                    setTransactionId('');
+                    setTransactionDate(null);
+                    setChangeDue(0);
+                  }} 
+                  className="flex-1 bg-gray-200 text-[#2C3E50] py-2 rounded-xl hover:bg-gray-300 transition-all duration-300 font-semibold"
+                >
+                  New Sale
+                </button>
               </div>
-              <p className="mt-2 text-xs text-[#2C3E50]/70">This is a demo receipt. No data has been saved.</p>
+              <p className="mt-2 text-xs text-[#2C3E50]/70">Sale recorded successfully in the system.</p>
             </div>
           </div>
         )}
