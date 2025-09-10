@@ -28,6 +28,7 @@ export default function Navbar() {
   const navigationLinks = [
     { to: '/', label: 'Home' },
     { to: '/products', label: 'Products' },
+    { to: '/contact', label: 'Contact' },
   ];
 
   const adminLinks = [

@@ -76,9 +76,9 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
+                <Link to="/contact" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
                   Contact
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="#" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
@@ -123,14 +123,14 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
+                <Link to="/terms-of-service" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
                   Terms & Conditions
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
+                <Link to="/privacy-policy" className="text-gray-300 hover:text-white transition-colors hover:pl-2 duration-200">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -202,12 +202,12 @@ export default function Footer() {
               </div>
             </div>
             <div className="flex space-x-6">
-              <a href="#" className="text-gray-400 hover:text-[#87CEEB] text-sm transition-colors">
+              <Link to="/privacy-policy" className="text-gray-400 hover:text-[#87CEEB] text-sm transition-colors">
                 Privacy Policy
-              </a>
-              <a href="#" className="text-gray-400 hover:text-[#87CEEB] text-sm transition-colors">
+              </Link>
+              <Link to="/terms-of-service" className="text-gray-400 hover:text-[#87CEEB] text-sm transition-colors">
                 Terms of Service
-              </a>
+              </Link>
               <a href="#" className="text-gray-400 hover:text-[#87CEEB] text-sm transition-colors">
                 Cookie Policy
               </a>

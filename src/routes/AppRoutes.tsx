@@ -17,6 +17,9 @@ import ResetPassword from '../pages/auth/ResetPassword';
 import EmailConfirm from '../pages/auth/EmailConfirm';
 import Profile from '../pages/customer/Profile';
 import OrderHistory from '../pages/customer/OrderHistory';
+import Contact from '../pages/customer/Contact';
+import PrivacyPolicy from '../pages/customer/PrivacyPolicy';
+import TermsOfService from '../pages/customer/TermsOfService';
 
 // Admin Pages
 import AdminDashboard from '../pages/admin/Dashboard';
@@ -45,6 +48,9 @@ export default function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/products" element={<Products />} />
       <Route path="/products/:id" element={<ProductDetails />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
       
       {/* Cart and Favourites - Public but enhanced experience for authenticated users */}
       <Route path="/cart" element={<Cart />} />

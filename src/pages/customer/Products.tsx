@@ -72,13 +72,16 @@ export default function Products() {
 
   const { addToCart } = useCart();
   
-  // Filter states
+  // Filter states - initialize from URL params
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '');
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState('featured');
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyOnSale, setOnlyOnSale] = useState(searchParams.get('on_sale') === 'true');
+  
+  // Handle promotion filters from URL
+  const promotionIds = searchParams.getAll('promotion');
 
   // Fetch real products from Supabase
   useEffect(() => {
@@ -292,8 +295,11 @@ export default function Products() {
     if (selectedCategory) params.set('category', selectedCategory);
     if (onlyOnSale) params.set('on_sale', 'true');
     
+    // Preserve promotion IDs from URL
+    promotionIds.forEach(id => params.append('promotion', id));
+    
     setSearchParams(params, { replace: true });
-  }, [searchQuery, selectedCategory, onlyOnSale, setSearchParams]);
+  }, [searchQuery, selectedCategory, onlyOnSale, promotionIds, setSearchParams]);
 
   // Filter products based on search and filters
   const filteredProducts = products.filter(product => {
@@ -407,7 +413,7 @@ export default function Products() {
         </div>
 
         {/* Active Filters Display */}
-        {(selectedCategory || onlyOnSale) && (
+        {(selectedCategory || onlyOnSale || promotionIds.length > 0) && (
           <div className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-blue-800 mr-2">Active Filters:</span>
@@ -434,6 +440,13 @@ export default function Products() {
                   >
                     <X className="h-3 w-3" />
                   </button>
+                </div>
+              )}
+
+              {promotionIds.length > 0 && (
+                <div className="flex items-center bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                  <Tag className="h-3 w-3 mr-1" />
+                  <span>Promotions ({promotionIds.length})</span>
                 </div>
               )}
 

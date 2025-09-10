@@ -4,31 +4,19 @@ import { ArrowRight, Truck, CheckCircle, Headphones, Gift, Star, Sparkles, Alert
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import ProductCard from '../../components/common/ProductCard';
 import { supabase } from '../../lib/supabase';
-import { projectId } from '../../utils/supabase/info';
+import { projectId, publicAnonKey } from '../../utils/supabase/info';
 import { motion } from 'framer-motion';
 
 
-// Updated categories to focus only on cleaning supplies
-const categories = [
-  { 
-    name: 'Equipment', 
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop', 
-    count: 45,
-    description: 'Professional cleaning machines and tools'
-  },
-  { 
-    name: 'Detergents', 
-    image: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=300&h=200&fit=crop', 
-    count: 67,
-    description: 'Industrial-strength cleaning chemicals'
-  },
-  { 
-    name: 'Supplies', 
-    image: 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=300&h=200&fit=crop', 
-    count: 89,
-    description: 'Essential cleaning accessories and consumables'
-  }
-];
+// Dynamic categories fetched from database
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image_url?: string;
+  product_count?: number;
+}
 
 // Add this helper function before HeroSlide component
 const getTimeRemaining = (endDate: string) => {
@@ -154,7 +142,7 @@ const getPromotionTheme = (promotion: any) => {
 };
 
 // Add this helper function before the Home component
-const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
+const HeroSlide: React.FC<{ promotion?: any; buildPromotionUrl: (promotion: any) => string }> = ({ promotion, buildPromotionUrl }) => {
   const theme = getPromotionTheme(promotion);
   const IconComponent = promotion ? 
     (theme.icon === 'Zap' ? Zap : 
@@ -232,17 +220,6 @@ const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
 
   // Promotion slide
   const timeRemaining = getTimeRemaining(promotion.end_date);
-  
-  // Add this helper function inside HeroSlide
-  const buildPromotionUrl = (promotion: any) => {
-    const params = new URLSearchParams();
-    if (promotion.filter_params) {
-      Object.entries(promotion.filter_params).forEach(([key, value]) => {
-        params.append(key, value as string);
-      });
-    }
-    return `/products?${params.toString()}`;
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -324,10 +301,12 @@ const HeroSlide: React.FC<{ promotion?: any }> = ({ promotion }) => {
 export default function Home() {
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [errorDetails, setErrorDetails] = useState<string>('');
-  const [realFeaturedProducts, setRealFeaturedProducts] = useState<any[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [featuredLoading, setFeaturedLoading] = useState(true);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [activePromotions, setActivePromotions] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
     const checkServerStatus = async () => {
@@ -361,6 +340,7 @@ export default function Home() {
 
     checkServerStatus();
     fetchFeaturedProducts();
+    fetchCategories();
   }, []);
 
   const fetchFeaturedProducts = async () => {
@@ -393,8 +373,8 @@ export default function Home() {
           null,
         category: product.categories?.name || 'General',
         image_url: product.images?.[0] || '/api/placeholder/400/400',
-        rating: 4.5, // You can add a reviews table later
-        reviews: Math.floor(Math.random() * 200) + 50, // Placeholder
+        rating: 4.5, // Default rating - can be enhanced with reviews table later
+        reviews: Math.floor(Math.random() * 200) + 50, // Default reviews count
         featured: true,
         description: product.short_description || product.description || 'High-quality cleaning product',
         in_stock: product.stock_quantity > 0,
@@ -404,13 +384,72 @@ export default function Home() {
           null
       }));
 
-      setRealFeaturedProducts(transformedProducts);
+      setFeaturedProducts(transformedProducts);
     } catch (err) {
       console.error('Failed to fetch featured products:', err);
-      // Fallback to original hardcoded products if database fetch fails
-      setRealFeaturedProducts([]);
+      setFeaturedProducts([]);
     } finally {
       setFeaturedLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const { data, error } = await supabase
+        .from('categories')
+        .select(`
+          *,
+          products!inner(count)
+        `)
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .limit(3);
+
+      if (error) throw error;
+      
+      // Transform categories with product counts
+      const transformedCategories = (data || []).map(category => ({
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        description: category.description || `${category.name} products`,
+        image_url: category.image_url || `https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop`,
+        product_count: category.products?.length || 0
+      }));
+
+      setCategories(transformedCategories);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+      // Fallback to default categories if fetch fails
+      setCategories([
+        { 
+          id: 'equipment',
+          name: 'Equipment', 
+          slug: 'equipment',
+          image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop', 
+          product_count: 0,
+          description: 'Professional cleaning machines and tools'
+        },
+        { 
+          id: 'detergents',
+          name: 'Detergents', 
+          slug: 'detergents',
+          image_url: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=300&h=200&fit=crop', 
+          product_count: 0,
+          description: 'Industrial-strength cleaning chemicals'
+        },
+        { 
+          id: 'supplies',
+          name: 'Supplies', 
+          slug: 'supplies',
+          image_url: 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=300&h=200&fit=crop', 
+          product_count: 0,
+          description: 'Essential cleaning accessories and consumables'
+        }
+      ]);
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -422,17 +461,6 @@ export default function Home() {
         params.append(key, value as string);
       });
     }
-    return `/products?${params.toString()}`;
-  };
-
-  // Helper function to build "View All Promotions" URL
-  const buildViewAllPromotionsUrl = () => {
-    const params = new URLSearchParams();
-    // Add all active promotion IDs
-    activePromotions.forEach(promo => {
-      params.append('promotion', promo.id);
-    });
-    params.append('on_sale', 'true'); // Show all discounted items
     return `/products?${params.toString()}`;
   };
 
@@ -548,7 +576,8 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <HeroSlide 
             key={currentSlideIndex} 
-            promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]} 
+            promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]}
+            buildPromotionUrl={buildPromotionUrl}
           />
           
           {/* Slide indicators */}
@@ -649,7 +678,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-              {(realFeaturedProducts.length > 0 ? realFeaturedProducts : featuredProducts).map((product, index) => (
+              {featuredProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -684,41 +713,56 @@ export default function Home() {
             </p>
           </motion.div>
          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {categories.map((category, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-              >
-                <Link
-                  to={`/products?category=${encodeURIComponent(category.name)}`}
-                  className="group block transform hover:-translate-y-2 transition-all duration-300"
-                >
-                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow relative">
-                    <div className="relative overflow-hidden">
-                      <ImageWithFallback
-                        src={category.image}
-                        alt={category.name}
-                        className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#87CEEB]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                    <div className="p-6 text-center">
-                      <h3 className="text-xl font-semibold text-[#2C3E50] mb-2 group-hover:text-[#4682B4] transition-colors">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-3">{category.description}</p>
-                      <p className="text-xs text-gray-500 bg-[#F8F9FA] px-3 py-1 rounded-full inline-block">
-                        {category.count} products
-                      </p>
-                    </div>
+          {categoriesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {[1, 2, 3].map((index) => (
+                <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
+                  <div className="bg-gray-300 h-48"></div>
+                  <div className="p-6 text-center">
+                    <div className="bg-gray-300 h-6 rounded mb-2"></div>
+                    <div className="bg-gray-300 h-4 rounded mb-3"></div>
+                    <div className="bg-gray-300 h-4 rounded w-1/2 mx-auto"></div>
                   </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {categories.map((category, index) => (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <Link
+                    to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
+                    className="group block transform hover:-translate-y-2 transition-all duration-300"
+                  >
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow relative">
+                      <div className="relative overflow-hidden">
+                        <ImageWithFallback
+                          src={category.image_url}
+                          alt={category.name}
+                          className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#87CEEB]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      </div>
+                      <div className="p-6 text-center">
+                        <h3 className="text-xl font-semibold text-[#2C3E50] mb-2 group-hover:text-[#4682B4] transition-colors">
+                          {category.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-3">{category.description}</p>
+                        <p className="text-xs text-gray-500 bg-[#F8F9FA] px-3 py-1 rounded-full inline-block">
+                          {category.product_count} products
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

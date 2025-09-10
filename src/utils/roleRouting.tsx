@@ -252,7 +252,8 @@ export function getNavigationForRole(role: string): Array<{
   
   const baseNavigation = [
     { label: 'Home', path: '/', icon: 'Home' },
-    { label: 'Products', path: '/products', icon: 'Package' }
+    { label: 'Products', path: '/products', icon: 'Package' },
+    { label: 'Contact', path: '/contact', icon: 'Mail' }
   ];
 
   switch (userRole) {
