@@ -95,6 +95,36 @@ export const processNotificationQueue = async (): Promise<ProcessResult> => {
  */
 export const processNotificationsWithEmailJS = async (): Promise<ProcessResult> => {
   try {
+    // Check if user is authenticated before making API calls
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // If no user is authenticated, skip processing to avoid 401 errors
+    if (!user) {
+      return {
+        processed_count: 0,
+        success_count: 0,
+        failed_count: 0,
+        errors: ['User not authenticated - skipping notification processing']
+      };
+    }
+
+    // Check if user has admin privileges for notification processing
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    // Only allow admin users to process notifications
+    if (!profile || profile.role !== 'admin') {
+      return {
+        processed_count: 0,
+        success_count: 0,
+        failed_count: 0,
+        errors: ['Admin privileges required for notification processing']
+      };
+    }
+
     // Get pending notifications from queue
     const { data: queueItems, error: fetchError } = await supabase
       .from('notification_queue')
@@ -105,6 +135,16 @@ export const processNotificationsWithEmailJS = async (): Promise<ProcessResult> 
       .limit(10); // Process 10 at a time
 
     if (fetchError) {
+      // Don't log 401 errors as they're expected when not authenticated
+      if (fetchError.message.includes('401') || fetchError.message.includes('Unauthorized')) {
+        return {
+          processed_count: 0,
+          success_count: 0,
+          failed_count: 0,
+          errors: ['Authentication required for notification processing']
+        };
+      }
+      
       console.error('Error fetching queue items:', fetchError);
       return {
         processed_count: 0,
@@ -313,16 +353,41 @@ export const retryFailedNotifications = async (): Promise<ProcessResult> => {
 
 /**
  * Start automatic processing (call this periodically)
+ * Only processes notifications when user is authenticated
  */
 export const startAutomaticProcessing = (intervalMs: number = 60000): (() => void) => {
+  let isProcessing = false;
+  
   const interval = setInterval(async () => {
+    // Prevent overlapping processing
+    if (isProcessing) return;
+    
     try {
+      isProcessing = true;
       const result = await processNotificationsWithEmailJS();
+      
+      // Only log if there are actual notifications processed or if there are real errors
       if (result.processed_count > 0) {
-        console.log(`Processed ${result.processed_count} notifications: ${result.success_count} sent, ${result.failed_count} failed`);
+        console.log(`📧 Processed ${result.processed_count} notifications: ${result.success_count} sent, ${result.failed_count} failed`);
+      } else if (result.errors.length > 0 && 
+                 !result.errors[0].includes('not authenticated') && 
+                 !result.errors[0].includes('Authentication required') &&
+                 !result.errors[0].includes('User not authenticated') &&
+                 !result.errors[0].includes('Admin privileges required')) {
+        // Only log non-authentication and non-authorization errors
+        console.warn('⚠️ Notification processing warning:', result.errors[0]);
       }
     } catch (error) {
-      console.error('Error in automatic processing:', error);
+      // Only log unexpected errors, not authentication issues
+      if (error instanceof Error && 
+          !error.message.includes('401') && 
+          !error.message.includes('Unauthorized') &&
+          !error.message.includes('not authenticated') &&
+          !error.message.includes('Admin privileges required')) {
+        console.error('❌ Error in automatic processing:', error);
+      }
+    } finally {
+      isProcessing = false;
     }
   }, intervalMs);
 

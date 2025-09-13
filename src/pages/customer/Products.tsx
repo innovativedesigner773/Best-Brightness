@@ -82,6 +82,10 @@ export default function Products() {
   
   // Handle promotion filters from URL
   const promotionIds = searchParams.getAll('promotion');
+  
+  // Handle additional filters from home page
+  const featuredFilter = searchParams.get('featured') === 'true';
+  const sortFilter = searchParams.get('sort') || 'featured';
 
   // Fetch real products from Supabase
   useEffect(() => {
@@ -114,8 +118,11 @@ export default function Products() {
         }
 
         if (productsError) {
-          console.error('❌ Error fetching products:', productsError);
-          throw new Error(`Failed to fetch products: ${productsError.message}`);
+          console.warn('❌ Error fetching products, using fallback:', productsError);
+          // Don't throw error, just use empty array
+          setProducts([]);
+          setCategories([]);
+          return;
         }
 
         console.log('✅ Products fetched for customer view:', productsData);
@@ -318,12 +325,16 @@ export default function Products() {
     if (onlyOnSale && !product.original_price) {
       return false;
     }
+    if (featuredFilter && !product.featured) {
+      return false;
+    }
     return true;
   });
 
   // Sort products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
+    const currentSort = sortFilter !== 'featured' ? sortFilter : sortBy;
+    switch (currentSort) {
       case 'price-low':
         return a.price - b.price;
       case 'price-high':
@@ -334,6 +345,10 @@ export default function Products() {
         return b.rating - a.rating;
       case 'stock':
         return b.stock_count - a.stock_count;
+      case 'newest':
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      case 'trending':
+        return (b.reviews_count || 0) - (a.reviews_count || 0);
       default:
         return 0;
     }

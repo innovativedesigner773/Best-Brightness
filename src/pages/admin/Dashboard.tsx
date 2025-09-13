@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -16,7 +16,8 @@ import {
   TestTube,
   Zap,
   Activity,
-  Bell
+  Bell,
+  RefreshCw
 } from 'lucide-react';
 
 // Import test components
@@ -25,31 +26,282 @@ import RealTimeRegistrationTest from '../../components/admin/RealTimeRegistratio
 import QuickRegistrationTest from '../../components/admin/QuickRegistrationTest';
 import StockNotificationManager from '../../components/admin/StockNotificationManager';
 
-// Mock data for dashboard
-const mockStats = {
-  totalUsers: 1247,
-  totalProducts: 156,
-  totalOrders: 89,
-  revenue: 15420.50,
-  growthRate: 12.5
-};
+// Import Supabase client
+import { supabase } from '../../lib/supabase';
 
-const mockRecentActivity = [
-  { id: 1, action: 'New user registered', user: 'John Doe', time: '2 minutes ago', type: 'user' },
-  { id: 2, action: 'Order completed', user: 'Jane Smith', time: '15 minutes ago', type: 'order' },
-  { id: 3, action: 'Product added', user: 'Admin', time: '1 hour ago', type: 'product' },
-  { id: 4, action: 'User login', user: 'Mike Johnson', time: '2 hours ago', type: 'user' }
-];
+// Data interfaces
+interface DashboardStats {
+  totalUsers: number;
+  totalProducts: number;
+  totalOrders: number;
+  revenue: number;
+  growthRate: number;
+  pendingOrders: number;
+  newProductsThisWeek: number;
+}
 
-const mockTopProducts = [
-  { id: 1, name: 'Professional Glass Cleaner', sales: 45, revenue: 675 },
-  { id: 2, name: 'Industrial Floor Mop', sales: 32, revenue: 960 },
-  { id: 3, name: 'Antibacterial Wipes Pack', sales: 28, revenue: 420 },
-  { id: 4, name: 'Multi-Surface Disinfectant', sales: 25, revenue: 500 }
-];
+interface RecentActivity {
+  id: string;
+  action: string;
+  user: string;
+  time: string;
+  type: 'user' | 'order' | 'product';
+}
+
+interface TopProduct {
+  id: string;
+  name: string;
+  sales: number;
+  revenue: number;
+}
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    revenue: 0,
+    growthRate: 0,
+    pendingOrders: 0,
+    newProductsThisWeek: 0
+  });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch dashboard statistics
+  const fetchDashboardStats = async () => {
+    try {
+      console.log('📊 Fetching dashboard statistics...');
+      
+      // Fetch users count
+      const { count: usersCount, error: usersError } = await supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact', head: true });
+
+      if (usersError) throw usersError;
+
+      // Fetch products count
+      const { count: productsCount, error: productsError } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true });
+
+      if (productsError) throw productsError;
+
+      // Fetch orders count and revenue
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, total_amount, status, created_at');
+
+      if (ordersError) throw ordersError;
+
+      // Fetch pending orders count
+      const pendingOrders = ordersData?.filter(order => order.status === 'pending').length || 0;
+
+      // Calculate total revenue
+      const revenue = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+
+      // Fetch products added this week
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const { count: newProductsCount, error: newProductsError } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', oneWeekAgo.toISOString());
+
+      if (newProductsError) throw newProductsError;
+
+      // Calculate growth rate (simplified - comparing this month to last month)
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const lastMonth = new Date(thisMonth);
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+      const { count: thisMonthOrders, error: thisMonthError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', thisMonth.toISOString());
+
+      const { count: lastMonthOrders, error: lastMonthError } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', lastMonth.toISOString())
+        .lt('created_at', thisMonth.toISOString());
+
+      const growthRate = lastMonthOrders && lastMonthOrders > 0 
+        ? ((thisMonthOrders || 0) - lastMonthOrders) / lastMonthOrders * 100 
+        : 0;
+
+      setStats({
+        totalUsers: usersCount || 0,
+        totalProducts: productsCount || 0,
+        totalOrders: ordersData?.length || 0,
+        revenue: revenue,
+        growthRate: Math.round(growthRate * 10) / 10,
+        pendingOrders: pendingOrders,
+        newProductsThisWeek: newProductsCount || 0
+      });
+
+      console.log('✅ Dashboard stats fetched successfully');
+    } catch (error) {
+      console.error('❌ Error fetching dashboard stats:', error);
+      setError('Failed to load dashboard statistics');
+    }
+  };
+
+  // Fetch recent activity
+  const fetchRecentActivity = async () => {
+    try {
+      console.log('🔄 Fetching recent activity...');
+      
+      const activities: RecentActivity[] = [];
+
+      // Fetch recent user registrations
+      const { data: recentUsers, error: usersError } = await supabase
+        .from('user_profiles')
+        .select('first_name, last_name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!usersError && recentUsers) {
+        recentUsers.forEach(user => {
+          activities.push({
+            id: `user-${user.created_at}`,
+            action: 'New user registered',
+            user: `${user.first_name} ${user.last_name}`,
+            time: formatTimeAgo(user.created_at),
+            type: 'user'
+          });
+        });
+      }
+
+      // Fetch recent orders
+      const { data: recentOrders, error: ordersError } = await supabase
+        .from('orders')
+        .select('order_number, status, created_at, customer_id')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!ordersError && recentOrders) {
+        // Get customer names for orders
+        const customerIds = recentOrders.map(order => order.customer_id).filter(Boolean);
+        const { data: customers } = await supabase
+          .from('user_profiles')
+          .select('id, first_name, last_name')
+          .in('id', customerIds);
+
+        recentOrders.forEach(order => {
+          const customer = customers?.find(c => c.id === order.customer_id);
+          const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'Unknown Customer';
+          
+          activities.push({
+            id: `order-${order.created_at}`,
+            action: `Order ${order.status}`,
+            user: customerName,
+            time: formatTimeAgo(order.created_at),
+            type: 'order'
+          });
+        });
+      }
+
+      // Sort activities by time and take the most recent 4
+      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setRecentActivity(activities.slice(0, 4));
+
+      console.log('✅ Recent activity fetched successfully');
+    } catch (error) {
+      console.error('❌ Error fetching recent activity:', error);
+    }
+  };
+
+  // Fetch top products
+  const fetchTopProducts = async () => {
+    try {
+      console.log('🏆 Fetching top products...');
+      
+      // Get top products by order items
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select(`
+          product_id,
+          quantity,
+          price,
+          product:products(name)
+        `);
+
+      if (orderItemsError) throw orderItemsError;
+
+      // Aggregate product sales
+      const productSales = new Map<string, { name: string; sales: number; revenue: number }>();
+      
+      orderItems?.forEach(item => {
+        if (item.product_id && item.product) {
+          const existing = productSales.get(item.product_id) || { 
+            name: item.product.name, 
+            sales: 0, 
+            revenue: 0 
+          };
+          existing.sales += item.quantity || 0;
+          existing.revenue += (item.quantity || 0) * (item.price || 0);
+          productSales.set(item.product_id, existing);
+        }
+      });
+
+      // Convert to array and sort by sales
+      const topProductsList = Array.from(productSales.entries())
+        .map(([id, data]) => ({
+          id,
+          name: data.name,
+          sales: data.sales,
+          revenue: data.revenue
+        }))
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 4);
+
+      setTopProducts(topProductsList);
+      console.log('✅ Top products fetched successfully');
+    } catch (error) {
+      console.error('❌ Error fetching top products:', error);
+    }
+  };
+
+  // Format time ago helper
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  };
+
+  // Refresh all data
+  const refreshData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        fetchDashboardStats(),
+        fetchRecentActivity(),
+        fetchTopProducts()
+      ]);
+    } catch (error) {
+      console.error('❌ Error refreshing data:', error);
+      setError('Failed to refresh dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-6">
@@ -66,12 +318,27 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshData}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <Badge variant="secondary" className="px-3 py-1">
                 <Activity className="h-4 w-4 mr-1" />
-                System Healthy
+                {loading ? 'Loading...' : 'System Healthy'}
               </Badge>
             </div>
           </div>
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
         </div>
 
         {/* Main Content Tabs */}
@@ -105,11 +372,13 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="text-2xl">{mockStats.totalUsers.toLocaleString()}</div>
+                    <div className="text-2xl">
+                      {loading ? '...' : stats.totalUsers.toLocaleString()}
+                    </div>
                     <Users className="h-8 w-8 text-white/80" />
                   </div>
                   <p className="text-xs text-white/80 mt-1">
-                    +{mockStats.growthRate}% from last month
+                    {loading ? 'Loading...' : `${stats.growthRate >= 0 ? '+' : ''}${stats.growthRate}% from last month`}
                   </p>
                 </CardContent>
               </Card>
@@ -120,11 +389,13 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="text-2xl">{mockStats.totalProducts}</div>
+                    <div className="text-2xl">
+                      {loading ? '...' : stats.totalProducts}
+                    </div>
                     <Package className="h-8 w-8 text-white/80" />
                   </div>
                   <p className="text-xs text-white/80 mt-1">
-                    5 added this week
+                    {loading ? 'Loading...' : `${stats.newProductsThisWeek} added this week`}
                   </p>
                 </CardContent>
               </Card>
@@ -135,11 +406,13 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="text-2xl">{mockStats.totalOrders}</div>
+                    <div className="text-2xl">
+                      {loading ? '...' : stats.totalOrders}
+                    </div>
                     <ShoppingCart className="h-8 w-8 text-white/80" />
                   </div>
                   <p className="text-xs text-white/80 mt-1">
-                    12 pending
+                    {loading ? 'Loading...' : `${stats.pendingOrders} pending`}
                   </p>
                 </CardContent>
               </Card>
@@ -150,11 +423,13 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between">
-                    <div className="text-2xl">${mockStats.revenue.toLocaleString()}</div>
+                    <div className="text-2xl">
+                      {loading ? '...' : `R${stats.revenue.toLocaleString()}`}
+                    </div>
                     <TrendingUp className="h-8 w-8 text-white/80" />
                   </div>
                   <p className="text-xs text-white/80 mt-1">
-                    +{mockStats.growthRate}% growth
+                    {loading ? 'Loading...' : `${stats.growthRate >= 0 ? '+' : ''}${stats.growthRate}% growth`}
                   </p>
                 </CardContent>
               </Card>
@@ -173,26 +448,38 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockRecentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-full ${
-                            activity.type === 'user' ? 'bg-[#4682B4]/10 text-[#4682B4]' :
-                            activity.type === 'order' ? 'bg-[#28A745]/10 text-[#28A745]' :
-                            'bg-[#FF6B35]/10 text-[#FF6B35]'
-                          }`}>
-                            {activity.type === 'user' ? <Users className="h-4 w-4" /> :
-                             activity.type === 'order' ? <ShoppingCart className="h-4 w-4" /> :
-                             <Package className="h-4 w-4" />}
-                          </div>
-                          <div>
-                            <p className="text-sm text-[#2C3E50]">{activity.action}</p>
-                            <p className="text-xs text-[#6C757D]">{activity.user}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs text-[#6C757D]">{activity.time}</span>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4682B4]"></div>
+                        <span className="ml-2 text-[#6C757D]">Loading activities...</span>
                       </div>
-                    ))}
+                    ) : recentActivity.length > 0 ? (
+                      recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className={`p-2 rounded-full ${
+                              activity.type === 'user' ? 'bg-[#4682B4]/10 text-[#4682B4]' :
+                              activity.type === 'order' ? 'bg-[#28A745]/10 text-[#28A745]' :
+                              'bg-[#FF6B35]/10 text-[#FF6B35]'
+                            }`}>
+                              {activity.type === 'user' ? <Users className="h-4 w-4" /> :
+                               activity.type === 'order' ? <ShoppingCart className="h-4 w-4" /> :
+                               <Package className="h-4 w-4" />}
+                            </div>
+                            <div>
+                              <p className="text-sm text-[#2C3E50]">{activity.action}</p>
+                              <p className="text-xs text-[#6C757D]">{activity.user}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-[#6C757D]">{activity.time}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-[#6C757D]">
+                        <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No recent activity found</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -208,20 +495,32 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockTopProducts.map((product, index) => (
-                      <div key={product.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-[#4682B4] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">
-                            #{index + 1}
-                          </div>
-                          <div>
-                            <p className="text-sm text-[#2C3E50]">{product.name}</p>
-                            <p className="text-xs text-[#6C757D]">{product.sales} sales</p>
-                          </div>
-                        </div>
-                        <span className="text-sm text-[#28A745]">${product.revenue}</span>
+                    {loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4682B4]"></div>
+                        <span className="ml-2 text-[#6C757D]">Loading products...</span>
                       </div>
-                    ))}
+                    ) : topProducts.length > 0 ? (
+                      topProducts.map((product, index) => (
+                        <div key={product.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-[#4682B4] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">
+                              #{index + 1}
+                            </div>
+                            <div>
+                              <p className="text-sm text-[#2C3E50]">{product.name}</p>
+                              <p className="text-xs text-[#6C757D]">{product.sales} sales</p>
+                            </div>
+                          </div>
+                          <span className="text-sm text-[#28A745]">R{product.revenue.toLocaleString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-[#6C757D]">
+                        <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No product sales data available</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

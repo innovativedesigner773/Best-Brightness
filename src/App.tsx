@@ -12,6 +12,8 @@ import { StockNotificationsProvider } from './contexts/StockNotificationsContext
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { OptimizedErrorBoundary } from './components/common/OptimizedErrorBoundary';
+import { SystemThemeProvider } from './components/common/SystemThemeProvider';
 import DatabaseStatusBanner from './components/common/DatabaseStatusBanner';
 import ServerStatusBanner from './components/common/ServerStatusBanner';
 import OfflineIndicator from './components/common/OfflineIndicator';
@@ -36,16 +38,18 @@ function AppContent() {
   // Initialize SVG error handling for the entire app
   useSVGErrorHandler();
 
-  // Start automatic notification processing
+  // Start automatic notification processing only when admin user is authenticated
   React.useEffect(() => {
-    console.log('🔄 Starting automatic notification processing...');
-    const stopProcessing = startAutomaticProcessing(30000); // Process every 30 seconds
-    
-    return () => {
-      console.log('🛑 Stopping automatic notification processing...');
-      stopProcessing();
-    };
-  }, []);
+    if (user && userProfile?.role === 'admin' && !loading) {
+      console.log('🔄 Starting automatic notification processing for admin user...');
+      const stopProcessing = startAutomaticProcessing(30000); // Process every 30 seconds
+      
+      return () => {
+        console.log('🛑 Stopping automatic notification processing...');
+        stopProcessing();
+      };
+    }
+  }, [user, userProfile?.role, loading]);
 
   console.log('🎯 App Content Render:', { 
     user: user?.id || null, 
@@ -84,27 +88,29 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ErrorBoundary>
-        <Navbar />
-        <OfflineIndicator />
-        <ServerStatusBanner />
-        <DatabaseStatusBanner />
-        
-        <main className="min-h-screen">
-          <AppRoutes />
-        </main>
+    <SystemThemeProvider>
+      <div className="min-h-screen bg-gray-50">
+        <OptimizedErrorBoundary>
+          <Navbar />
+          <OfflineIndicator />
+          <ServerStatusBanner />
+          <DatabaseStatusBanner />
+          
+          <main className="min-h-screen">
+            <AppRoutes />
+          </main>
 
-        <Footer />
-      </ErrorBoundary>
-      
-      <Toaster 
-        position="top-right" 
-        richColors 
-        closeButton
-        duration={4000}
-      />
-    </div>
+          <Footer />
+        </OptimizedErrorBoundary>
+        
+        <Toaster 
+          position="top-right" 
+          richColors 
+          closeButton
+          duration={4000}
+        />
+      </div>
+    </SystemThemeProvider>
   );
 }
 

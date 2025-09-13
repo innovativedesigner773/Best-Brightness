@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Truck, CheckCircle, Headphones, Gift, Star, Sparkles, AlertCircle, Clock, Zap, Users } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle, Headphones, Gift, Star, Sparkles, AlertCircle, Clock, Zap, Users, TrendingUp, Award, Shield } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import ProductCard from '../../components/common/ProductCard';
+import ProductCarousel from '../../components/common/ProductCarousel';
+import SalesSection from '../../components/common/SalesSection';
+import CategoryShowcase from '../../components/common/CategoryShowcase';
+import ProductFilters from '../../components/common/ProductFilters';
 import { supabase } from '../../lib/supabase';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 // Dynamic categories fetched from database
@@ -307,6 +311,24 @@ export default function Home() {
   const [activePromotions, setActivePromotions] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
+  const [newProducts, setNewProducts] = useState<any[]>([]);
+  const [topRatedProducts, setTopRatedProducts] = useState<any[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    search: '',
+    category: '',
+    priceRange: [0, 1000] as [number, number],
+    sortBy: 'featured',
+    onlyInStock: false,
+    onlyOnSale: false,
+    rating: 0,
+    brand: ''
+  });
 
   useEffect(() => {
     const checkServerStatus = async () => {
@@ -341,6 +363,7 @@ export default function Home() {
     checkServerStatus();
     fetchFeaturedProducts();
     fetchCategories();
+    fetchAllProducts();
   }, []);
 
   const fetchFeaturedProducts = async () => {
@@ -404,7 +427,7 @@ export default function Home() {
         `)
         .eq('is_active', true)
         .order('name', { ascending: true })
-        .limit(3);
+        .limit(6);
 
       if (error) throw error;
       
@@ -453,6 +476,74 @@ export default function Home() {
     }
   };
 
+  const fetchAllProducts = async () => {
+    try {
+      setProductsLoading(true);
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to fetch products, using fallback data:', error);
+        // Use fallback data instead of throwing error
+        setAllProducts([]);
+        setTrendingProducts([]);
+        setNewProducts([]);
+        setTopRatedProducts([]);
+        return;
+      }
+      
+      // Transform the data to match the expected format
+      const transformedProducts = (data || []).map(product => ({
+        id: product.id,
+        name: product.name,
+        brand: product.brand || 'Best Brightness',
+        price: product.price,
+        original_price: product.compare_at_price,
+        discount: product.compare_at_price ? 
+          Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100) : 
+          null,
+        category: product.categories?.name || 'General',
+        image_url: product.images?.[0] || '/api/placeholder/400/400',
+        rating: 4.5, // Default rating - can be enhanced with reviews table later
+        reviews: Math.floor(Math.random() * 200) + 50, // Default reviews count
+        featured: product.is_featured,
+        description: product.short_description || product.description || 'High-quality cleaning product',
+        in_stock: product.stock_quantity > 0,
+        stock_count: product.stock_quantity,
+        promotion_badge: product.compare_at_price ? 
+          `${Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)}% OFF` : 
+          null,
+        sku: product.sku,
+        created_at: product.created_at
+      }));
+
+      setAllProducts(transformedProducts);
+      
+      // Set different product collections
+      setTrendingProducts(transformedProducts.filter(p => p.featured).slice(0, 8));
+      setNewProducts(transformedProducts.slice(0, 8));
+      setTopRatedProducts([...transformedProducts].sort((a, b) => b.rating - a.rating).slice(0, 8));
+      
+    } catch (err) {
+      console.error('Failed to fetch all products:', err);
+      // Set empty arrays to prevent crashes
+      setAllProducts([]);
+      setTrendingProducts([]);
+      setNewProducts([]);
+      setTopRatedProducts([]);
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   // Helper function to build promotion URL
   const buildPromotionUrl = (promotion: any) => {
     const params = new URLSearchParams();
@@ -466,6 +557,8 @@ export default function Home() {
 
   // Add this useEffect for slide rotation
   useEffect(() => {
+    if (activePromotions.length === 0) return;
+    
     const timer = setInterval(() => {
       setCurrentSlideIndex(current => 
         current >= activePromotions.length ? 0 : current + 1
@@ -496,6 +589,26 @@ export default function Home() {
 
     fetchActivePromotions();
   }, []);
+
+  // Filter handlers
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
+
+  // Get unique brands from products
+  const getUniqueBrands = () => {
+    return [...new Set(allProducts.map(p => p.brand).filter(Boolean))];
+  };
+
+  // Get unique categories from products
+  const getUniqueCategories = () => {
+    return [...new Set(allProducts.map(p => p.category).filter(Boolean))];
+  };
+
+  // Get max price from products
+  const getMaxPrice = () => {
+    return Math.max(...allProducts.map(p => p.price), 1000);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -529,7 +642,7 @@ export default function Home() {
       
       {/* Updated Hero Section with Promotions */}
       <section 
-        className="relative overflow-hidden transition-all duration-1000 ease-in-out"
+        className="relative overflow-hidden"
         style={{
           background: (() => {
             if (currentSlideIndex === 0) {
@@ -574,11 +687,20 @@ export default function Home() {
         </div>
        
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <HeroSlide 
-            key={currentSlideIndex} 
-            promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]}
-            buildPromotionUrl={buildPromotionUrl}
-          />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlideIndex}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+              <HeroSlide 
+                promotion={currentSlideIndex === 0 ? null : activePromotions[currentSlideIndex - 1]}
+                buildPromotionUrl={buildPromotionUrl}
+              />
+            </motion.div>
+          </AnimatePresence>
           
           {/* Slide indicators */}
           {activePromotions.length > 0 && (
@@ -645,128 +767,83 @@ export default function Home() {
       {/* Hot Deals & Promotions Section */}
       {/* <PromotionsSection /> Removed as promotions are now in the hero section */}
 
-      {/* Featured Products */}
-      <section className="py-16 bg-[#F8F9FA]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex justify-between items-center mb-8"
-          >
-            <div>
-              <h2 className="text-3xl font-bold text-[#2C3E50] mb-2">Featured Products</h2>
-              <p className="text-gray-600">Our most popular cleaning supplies and equipment</p>
-            </div>
-            <Link to="/products" className="text-[#4682B4] hover:text-[#2C3E50] font-medium flex items-center group">
-              View All Products
-              <ArrowRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </motion.div>
-         
-          {/* Grid with equal height cards */}
-          {featuredLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((index) => (
-                <div key={index} className="bg-white rounded-lg shadow-lg p-6 animate-pulse">
-                  <div className="bg-gray-300 h-48 rounded-lg mb-4"></div>
-                  <div className="bg-gray-300 h-4 rounded mb-2"></div>
-                  <div className="bg-gray-300 h-4 rounded w-3/4 mb-2"></div>
-                  <div className="bg-gray-300 h-4 rounded w-1/2"></div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-              {featuredProducts.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className="h-full" // Ensure full height
-                >
-                  <ProductCard 
-                    product={product} 
-                    featured 
-                    className="h-full flex flex-col" // Force equal height with flexbox
-                  />
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Advanced Product Filters */}
+      {allProducts.length > 0 && (
+        <section className="py-8 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductFilters
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              categories={getUniqueCategories()}
+              brands={getUniqueBrands()}
+              maxPrice={getMaxPrice()}
+            />
+          </div>
+        </section>
+      )}
 
-      {/* Shop by Category */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-[#2C3E50] mb-4">Shop by Category</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Find exactly what you need across our three main categories of professional cleaning solutions
-            </p>
-          </motion.div>
-         
-          {categoriesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              {[1, 2, 3].map((index) => (
-                <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden animate-pulse">
-                  <div className="bg-gray-300 h-48"></div>
-                  <div className="p-6 text-center">
-                    <div className="bg-gray-300 h-6 rounded mb-2"></div>
-                    <div className="bg-gray-300 h-4 rounded mb-3"></div>
-                    <div className="bg-gray-300 h-4 rounded w-1/2 mx-auto"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              {categories.map((category, index) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
-                >
-                  <Link
-                    to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
-                    className="group block transform hover:-translate-y-2 transition-all duration-300"
-                  >
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow relative">
-                      <div className="relative overflow-hidden">
-                        <ImageWithFallback
-                          src={category.image_url}
-                          alt={category.name}
-                          className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#87CEEB]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      </div>
-                      <div className="p-6 text-center">
-                        <h3 className="text-xl font-semibold text-[#2C3E50] mb-2 group-hover:text-[#4682B4] transition-colors">
-                          {category.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-3">{category.description}</p>
-                        <p className="text-xs text-gray-500 bg-[#F8F9FA] px-3 py-1 rounded-full inline-block">
-                          {category.product_count} products
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* Featured Products Carousel */}
+      <ProductCarousel
+        products={featuredProducts}
+        title="⭐ Featured Products"
+        subtitle="Our most popular and highly-rated cleaning supplies"
+        viewAllLink="/products?featured=true"
+        autoSlide={true}
+        autoSlideInterval={6000}
+        className="bg-[#F8F9FA]"
+      />
 
-      {/* Final CTA Section */}
+      {/* Trending Products */}
+      <ProductCarousel
+        products={trendingProducts}
+        title="🔥 Trending Now"
+        subtitle="What's popular with our customers right now"
+        viewAllLink="/products?sort=trending"
+        autoSlide={true}
+        autoSlideInterval={5000}
+      />
+
+      {/* Sales Section */}
+      <SalesSection
+        products={allProducts}
+        title="🔥 Hot Deals & Sales"
+        subtitle="Limited time offers you can't miss"
+        showCountdown={true}
+        endDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()} // 7 days from now
+      />
+
+      {/* New Products */}
+      <ProductCarousel
+        products={newProducts}
+        title="✨ New Arrivals"
+        subtitle="Fresh products just added to our catalog"
+        viewAllLink="/products?sort=newest"
+        autoSlide={true}
+        autoSlideInterval={7000}
+        className="bg-gray-50"
+      />
+
+      {/* Top Rated Products */}
+      <ProductCarousel
+        products={topRatedProducts}
+        title="⭐ Top Rated"
+        subtitle="Highest rated products by our customers"
+        viewAllLink="/products?sort=rating"
+        autoSlide={true}
+        autoSlideInterval={8000}
+      />
+
+      {/* Enhanced Category Showcase */}
+      <CategoryShowcase
+        categories={categories}
+        products={allProducts}
+        title="Shop by Category"
+        subtitle="Find exactly what you need across our professional cleaning solutions"
+        maxCategories={6}
+        maxProductsPerCategory={4}
+      />
+
+      {/* Enhanced Final CTA Section */}
       <section className="py-20 bg-gradient-to-br from-[#87CEEB] via-[#B0E0E6] to-[#4682B4] relative overflow-hidden">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -779,49 +856,128 @@ export default function Home() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="relative max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8"
+          className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
         >
-          <div className="flex justify-center mb-6">
-            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
-              <Users className="h-12 w-12 text-white" />
+          <div className="text-center mb-12">
+            <div className="flex justify-center mb-6">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+                <Users className="h-12 w-12 text-white" />
+              </div>
             </div>
-          </div>
-          <h2 className="text-4xl font-bold mb-6 text-[#2C3E50]">Ready to Get Started?</h2>
-          <p className="text-xl mb-10 text-[#2C3E50]/80 max-w-2xl mx-auto">
-            Join thousands of satisfied customers across Durban who trust Best Brightness for their cleaning needs.
-            Experience the difference professional-grade supplies make.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/register"
-              className="bg-white text-[#4682B4] px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300 inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
-            >
-              Create Account
-              <Gift className="ml-2 h-5 w-5" />
-            </Link>
-            <Link
-              to="/products"
-              className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-[#4682B4] transition-all duration-300 inline-flex items-center justify-center"
-            >
-              Browse Products
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
+            <h2 className="text-4xl font-bold mb-6 text-white">Ready to Get Started?</h2>
+            <p className="text-xl mb-10 text-white/90 max-w-2xl mx-auto">
+              Join thousands of satisfied customers across Durban who trust Best Brightness for their cleaning needs.
+              Experience the difference professional-grade supplies make.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/register"
+                className="bg-white text-[#4682B4] px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300 inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+              >
+                Create Account
+                <Gift className="ml-2 h-5 w-5" />
+              </Link>
+              <Link
+                to="/products"
+                className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-[#4682B4] transition-all duration-300 inline-flex items-center justify-center"
+              >
+                Browse Products
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </div>
           </div>
          
-          {/* Trust indicators */}
-          <div className="mt-12 flex flex-wrap justify-center items-center gap-8 text-white/80">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5" />
-              <span className="text-sm">2,500+ Happy Customers</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Star className="h-5 w-5 fill-current" />
-              <span className="text-sm">4.9/5 Average Rating</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Truck className="h-5 w-5" />
-              <span className="text-sm">Fast Durban Delivery</span>
-            </div>
+          {/* Enhanced Trust indicators */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+            >
+              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">2,500+</h3>
+              <p className="text-white/80">Happy Customers</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+            >
+              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Star className="h-8 w-8 text-white fill-current" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">4.9/5</h3>
+              <p className="text-white/80">Average Rating</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+            >
+              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Truck className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">24h</h3>
+              <p className="text-white/80">Fast Durban Delivery</p>
+            </motion.div>
+          </div>
+
+          {/* Additional Features */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.8 }}
+              className="text-center"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
+                <Shield className="h-6 w-6 text-white mx-auto" />
+              </div>
+              <p className="text-white/80 text-sm">Quality Guarantee</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 1.0 }}
+              className="text-center"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
+                <Award className="h-6 w-6 text-white mx-auto" />
+              </div>
+              <p className="text-white/80 text-sm">Professional Grade</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 1.2 }}
+              className="text-center"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
+                <TrendingUp className="h-6 w-6 text-white mx-auto" />
+              </div>
+              <p className="text-white/80 text-sm">Best Prices</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 1.4 }}
+              className="text-center"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
+                <Headphones className="h-6 w-6 text-white mx-auto" />
+              </div>
+              <p className="text-white/80 text-sm">24/7 Support</p>
+            </motion.div>
           </div>
         </motion.div>
       </section>
