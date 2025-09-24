@@ -19,6 +19,7 @@ import {
   Bell,
   RefreshCw
 } from 'lucide-react';
+import D3TimeSeries from '../../components/ui/D3TimeSeries';
 
 // Import test components
 import DatabaseFixVerification from '../../components/admin/DatabaseFixVerification';
@@ -28,6 +29,7 @@ import StockNotificationManager from '../../components/admin/StockNotificationMa
 
 // Import Supabase client
 import { supabase } from '../../lib/supabase';
+import { getSummary, getSalesTimeSeries, getBestSellers, getMonthlyStock50Reached, getRevenueBreakdown, getInventoryKpis, getSalesByCategory, getTopCustomers, getBusinessValue, type TimeRange } from '../../services/analyticsService';
 
 // Data interfaces
 interface DashboardStats {
@@ -58,6 +60,7 @@ interface TopProduct {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<TimeRange>('1M');
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     totalProducts: 0,
@@ -69,39 +72,47 @@ export default function AdminDashboard() {
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [bestByQty, setBestByQty] = useState<Array<{ id: string; name: string; quantity: number; revenue: number }>>([]);
+  const [bestByRevenue, setBestByRevenue] = useState<Array<{ id: string; name: string; quantity: number; revenue: number }>>([]);
+  const [stock50, setStock50] = useState<Array<{ id: string; name: string; soldThisMonth: number; startingStock: number; percentSold: number }>>([]);
+  const [series, setSeries] = useState<Array<{ date: string; revenue: number; orders: number }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [revBreakdown, setRevBreakdown] = useState<{ subtotal: number; tax: number; shipping: number; discount: number; total: number } | null>(null);
+  const [inventory, setInventory] = useState<{ totalProducts: number; active: number; outOfStock: number; lowStock: number } | null>(null);
+  const [salesByCat, setSalesByCat] = useState<Array<{ categoryId: string; categoryName: string; revenue: number; orders: number; items: number }>>([]);
+  const [topCustomers, setTopCustomers] = useState<Array<{ id: string; name: string; email: string; total: number; orders: number }>>([]);
+  const [biz, setBiz] = useState<{ aov: number; itemsPerOrder: number; repeatRate: number; grossMargin: number; inventoryValueRetail: number; inventoryValueCost: number; sellThrough: number; refundRate: number; revenue: number; ordersCount: number; itemsCount: number } | null>(null);
 
   // Fetch dashboard statistics
   const fetchDashboardStats = async () => {
     try {
       console.log('📊 Fetching dashboard statistics...');
       
-      // Fetch users count
+      // Fetch users count (use count with small range to avoid head/header issues)
       const { count: usersCount, error: usersError } = await supabase
         .from('user_profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact' })
+        .range(0, 0);
 
       if (usersError) throw usersError;
 
       // Fetch products count
       const { count: productsCount, error: productsError } = await supabase
         .from('products')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact' })
+        .range(0, 0);
 
       if (productsError) throw productsError;
 
-      // Fetch orders count and revenue
+      // Fetch orders for growth rate calc
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('id, total_amount, status, created_at');
+        .select('id, status, created_at');
 
       if (ordersError) throw ordersError;
 
-      // Fetch pending orders count
-      const pendingOrders = ordersData?.filter(order => order.status === 'pending').length || 0;
-
-      // Calculate total revenue
-      const revenue = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+      // Fetch pending orders count separately scoped to recent period if needed (keep base here for safety)
+      const pendingOrders = ordersData?.filter(order => (order.status || '').toLowerCase() === 'pending').length || 0;
 
       // Fetch products added this week
       const oneWeekAgo = new Date();
@@ -139,7 +150,7 @@ export default function AdminDashboard() {
         totalUsers: usersCount || 0,
         totalProducts: productsCount || 0,
         totalOrders: ordersData?.length || 0,
-        revenue: revenue,
+        revenue: 0,
         growthRate: Math.round(growthRate * 10) / 10,
         pendingOrders: pendingOrders,
         newProductsThisWeek: newProductsCount || 0
@@ -285,11 +296,44 @@ export default function AdminDashboard() {
     setLoading(true);
     setError(null);
     try {
-      await Promise.all([
+      // Existing basics
+      const basics = Promise.all([
         fetchDashboardStats(),
         fetchRecentActivity(),
         fetchTopProducts()
       ]);
+      // New analytics-driven data
+      const analytics = Promise.all([
+        getSummary(range),
+        getSalesTimeSeries(range),
+        getBestSellers(range, 'quantity', 5),
+        getBestSellers(range, 'revenue', 5),
+        getMonthlyStock50Reached(),
+        getRevenueBreakdown(range),
+        getInventoryKpis(),
+        getSalesByCategory(range),
+        getTopCustomers(range, 5),
+        getBusinessValue(range)
+      ]);
+
+      const [, [summary, ts, qty, rev, stock, rbd, inv, cat, customers, business]] = await Promise.all([basics, analytics]);
+      // Merge KPIs for orders/sales, keep users/products from base stats to avoid unintended range-scoping
+      setStats(prev => ({
+        ...prev,
+        totalOrders: summary.ordersCount,
+        revenue: summary.salesAmount,
+        pendingOrders: summary.pendingOrders,
+        newProductsThisWeek: summary.newProductsThisWeek
+      }));
+      setSeries(ts);
+      setBestByQty(qty as any);
+      setBestByRevenue(rev as any);
+      setStock50(stock as any);
+      setRevBreakdown(rbd as any);
+      setInventory(inv as any);
+      setSalesByCat(cat as any);
+      setTopCustomers(customers as any);
+      setBiz(business as any);
     } catch (error) {
       console.error('❌ Error refreshing data:', error);
       setError('Failed to refresh dashboard data');
@@ -301,7 +345,7 @@ export default function AdminDashboard() {
   // Load data on component mount
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [range]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] p-6">
@@ -364,6 +408,26 @@ export default function AdminDashboard() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Range Filters */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                {([
+                  { key: '1W', label: '1W' },
+                  { key: '1M', label: '1M' },
+                  { key: '6M', label: '6M' },
+                  { key: '12M', label: '12M' }
+                ] as Array<{ key: TimeRange; label: string }>).map(opt => (
+                  <Button
+                    key={opt.key}
+                    variant={range === opt.key ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setRange(opt.key)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gradient-to-r from-[#4682B4] to-[#87CEEB] text-white">
@@ -437,6 +501,21 @@ export default function AdminDashboard() {
 
             {/* Charts and Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Sales Performance Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Revenue & Orders
+                  </CardTitle>
+                  <CardDescription>Performance over selected period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <D3TimeSeries data={series} height={256} />
+                  </div>
+                </CardContent>
+              </Card>
               {/* Recent Activity */}
               <Card>
                 <CardHeader>
@@ -491,40 +570,267 @@ export default function AdminDashboard() {
                     <TrendingUp className="h-5 w-5" />
                     Top Products
                   </CardTitle>
-                  <CardDescription>Best performing products this month</CardDescription>
+                  <CardDescription>Best performing products for selected period</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {loading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4682B4]"></div>
-                        <span className="ml-2 text-[#6C757D]">Loading products...</span>
-                      </div>
-                    ) : topProducts.length > 0 ? (
-                      topProducts.map((product, index) => (
-                        <div key={product.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-[#4682B4] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">
-                              #{index + 1}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">By Quantity</h4>
+                      <div className="space-y-3">
+                        {(loading ? [] : bestByQty).map((p, index) => (
+                          <div key={p.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-[#4682B4] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">#{index + 1}</div>
+                              <div>
+                                <p className="text-sm text-[#2C3E50]">{p.name}</p>
+                                <p className="text-xs text-[#6C757D]">{p.quantity} units</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm text-[#2C3E50]">{product.name}</p>
-                              <p className="text-xs text-[#6C757D]">{product.sales} sales</p>
-                            </div>
+                            <span className="text-sm text-[#28A745]">R{p.revenue.toLocaleString()}</span>
                           </div>
-                          <span className="text-sm text-[#28A745]">R{product.revenue.toLocaleString()}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-[#6C757D]">
-                        <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No product sales data available</p>
+                        ))}
+                        {!loading && bestByQty.length === 0 && (
+                          <div className="text-center py-6 text-[#6C757D]">No data</div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">By Revenue</h4>
+                      <div className="space-y-3">
+                        {(loading ? [] : bestByRevenue).map((p, index) => (
+                          <div key={p.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-[#34495E] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">#{index + 1}</div>
+                              <div>
+                                <p className="text-sm text-[#2C3E50]">{p.name}</p>
+                                <p className="text-xs text-[#6C757D]">R{p.revenue.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <span className="text-sm text-[#28A745]">{p.quantity} units</span>
+                          </div>
+                        ))}
+                        {!loading && bestByRevenue.length === 0 && (
+                          <div className="text-center py-6 text-[#6C757D]">No data</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Revenue Breakdown & Inventory KPIs */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Breakdown</CardTitle>
+                  <CardDescription>Completed orders in selected period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {revBreakdown ? (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Subtotal</div>
+                        <div className="text-[#2C3E50] font-semibold">R{revBreakdown.subtotal.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Tax</div>
+                        <div className="text-[#2C3E50] font-semibold">R{revBreakdown.tax.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Shipping</div>
+                        <div className="text-[#2C3E50] font-semibold">R{revBreakdown.shipping.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Discount</div>
+                        <div className="text-[#2C3E50] font-semibold">-R{revBreakdown.discount.toLocaleString()}</div>
+                      </div>
+                      <div className="col-span-2 p-3 bg-[#E8F5E9] rounded-lg">
+                        <div className="text-[#2E7D32]">Total</div>
+                        <div className="text-[#1B5E20] font-semibold text-lg">R{revBreakdown.total.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[#6C757D] text-sm">No data</div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Inventory</CardTitle>
+                  <CardDescription>Stock health overview</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {inventory ? (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Total</div>
+                        <div className="text-[#2C3E50] font-semibold">{inventory.totalProducts}</div>
+                      </div>
+                      <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                        <div className="text-[#6C757D]">Active</div>
+                        <div className="text-[#2C3E50] font-semibold">{inventory.active}</div>
+                      </div>
+                      <div className="p-3 bg-[#FFF3E0] rounded-lg">
+                        <div className="text-[#EF6C00]">Low Stock (≤5)</div>
+                        <div className="text-[#E65100] font-semibold">{inventory.lowStock}</div>
+                      </div>
+                      <div className="p-3 bg-[#FFEBEE] rounded-lg">
+                        <div className="text-[#C62828]">Out of Stock</div>
+                        <div className="text-[#B71C1C] font-semibold">{inventory.outOfStock}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[#6C757D] text-sm">No data</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sales by Category & Top Customers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Sales by Category</CardTitle>
+                  <CardDescription>Top categories by revenue</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {salesByCat.length ? (
+                    <div className="space-y-3">
+                      {salesByCat.slice(0, 6).map(row => (
+                        <div key={row.categoryId} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                          <div>
+                            <div className="text-sm text-[#2C3E50]">{row.categoryName}</div>
+                            <div className="text-xs text-[#6C757D]">{row.items} items</div>
+                          </div>
+                          <div className="text-sm font-semibold text-[#2C3E50]">R{row.revenue.toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[#6C757D] text-sm">No data</div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Customers</CardTitle>
+                  <CardDescription>Highest spenders in selected period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {topCustomers.length ? (
+                    <div className="space-y-3">
+                      {topCustomers.map((c, idx) => (
+                        <div key={c.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-[#4682B4] text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">#{idx + 1}</div>
+                            <div>
+                              <div className="text-sm text-[#2C3E50]">{c.name || 'Customer'}</div>
+                              <div className="text-xs text-[#6C757D]">{c.email}</div>
+                            </div>
+                          </div>
+                          <div className="text-sm font-semibold text-[#2C3E50]">R{c.total.toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[#6C757D] text-sm">No data</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Business Value KPIs */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Business Value</CardTitle>
+                <CardDescription>Key commerce metrics for the selected period</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {biz ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Average Order Value</div>
+                      <div className="text-[#2C3E50] font-semibold">R{Math.round(biz.aov).toLocaleString()}</div>
+                    </div>
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Items per Order</div>
+                      <div className="text-[#2C3E50] font-semibold">{biz.itemsPerOrder.toFixed(2)}</div>
+                    </div>
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Repeat Customer Rate</div>
+                      <div className="text-[#2C3E50] font-semibold">{Math.round(biz.repeatRate * 100)}%</div>
+                    </div>
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Gross Margin</div>
+                      <div className="text-[#2C3E50] font-semibold">{Math.round(biz.grossMargin * 100)}%</div>
+                    </div>
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Inventory Value (Retail)</div>
+                      <div className="text-[#2C3E50] font-semibold">R{Math.round(biz.inventoryValueRetail).toLocaleString()}</div>
+                    </div>
+                    <div className="p-3 bg-[#F8F9FA] rounded-lg">
+                      <div className="text-[#6C757D] text-sm">Inventory Value (Cost)</div>
+                      <div className="text-[#2C3E50] font-semibold">R{Math.round(biz.inventoryValueCost).toLocaleString()}</div>
+                    </div>
+                    <div className="p-3 bg-[#FFF3E0] rounded-lg">
+                      <div className="text-[#EF6C00] text-sm">Sell-Through</div>
+                      <div className="text-[#E65100] font-semibold">{Math.round(biz.sellThrough * 100)}%</div>
+                    </div>
+                    <div className="p-3 bg-[#FFEBEE] rounded-lg">
+                      <div className="text-[#C62828] text-sm">Refund/Cancel Rate</div>
+                      <div className="text-[#B71C1C] font-semibold">{Math.round(biz.refundRate * 100)}%</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[#6C757D] text-sm">No data</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Stock 50% Reached This Month */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Products that reached 50% of monthly stock
+                </CardTitle>
+                <CardDescription>Based on current month sales vs starting stock</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4682B4]"></div>
+                    <span className="ml-2 text-[#6C757D]">Checking stock...</span>
+                  </div>
+                ) : stock50.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-[#6C757D]">
+                          <th className="py-2 pr-4">Product</th>
+                          <th className="py-2 pr-4">Sold (month)</th>
+                          <th className="py-2 pr-4">Starting Stock</th>
+                          <th className="py-2">% Sold</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stock50.map(p => (
+                          <tr key={p.id} className="border-t">
+                            <td className="py-2 pr-4 text-[#2C3E50]">{p.name}</td>
+                            <td className="py-2 pr-4">{p.soldThisMonth}</td>
+                            <td className="py-2 pr-4">{p.startingStock}</td>
+                            <td className="py-2">{Math.round(p.percentSold * 100)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-[#6C757D]">No products reached 50% this month yet.</div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Registration Testing Tab */}
