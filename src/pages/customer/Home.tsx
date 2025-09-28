@@ -782,15 +782,14 @@ export default function Home() {
         </section>
       )}
 
-      {/* Featured Products Carousel */}
+      {/* Featured Products */}
       <ProductCarousel
         products={featuredProducts}
         title="⭐ Featured Products"
         subtitle="Our most popular and highly-rated cleaning supplies"
-        viewAllLink="/products?featured=true"
-        autoSlide={true}
-        autoSlideInterval={6000}
+        viewAllLink="/products?featured=true&filter=featured"
         className="bg-[#F8F9FA]"
+        maxItems={4}
       />
 
       {/* Trending Products */}
@@ -798,9 +797,8 @@ export default function Home() {
         products={trendingProducts}
         title="🔥 Trending Now"
         subtitle="What's popular with our customers right now"
-        viewAllLink="/products?sort=trending"
-        autoSlide={true}
-        autoSlideInterval={5000}
+        viewAllLink="/products?sort=trending&filter=trending"
+        maxItems={4}
       />
 
       {/* Sales Section */}
@@ -817,10 +815,9 @@ export default function Home() {
         products={newProducts}
         title="✨ New Arrivals"
         subtitle="Fresh products just added to our catalog"
-        viewAllLink="/products?sort=newest"
-        autoSlide={true}
-        autoSlideInterval={7000}
+        viewAllLink="/products?sort=newest&filter=new"
         className="bg-gray-50"
+        maxItems={4}
       />
 
       {/* Top Rated Products */}
@@ -828,9 +825,8 @@ export default function Home() {
         products={topRatedProducts}
         title="⭐ Top Rated"
         subtitle="Highest rated products by our customers"
-        viewAllLink="/products?sort=rating"
-        autoSlide={true}
-        autoSlideInterval={8000}
+        viewAllLink="/products?sort=rating&filter=top-rated"
+        maxItems={4}
       />
 
       {/* Enhanced Category Showcase */}

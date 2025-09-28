@@ -83,7 +83,7 @@ export default function CategoryShowcase({
   }
 
   return (
-    <section className={`py-16 bg-gray-50 ${className}`}>
+    <section className={`py-16 bg-[#F8F9FA] ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
@@ -92,8 +92,8 @@ export default function CategoryShowcase({
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">{title}</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">{subtitle}</p>
+          <h2 className="text-4xl font-bold text-[#2C3E50] mb-4">{title}</h2>
+          <p className="text-xl text-[#6C757D] max-w-3xl mx-auto">{subtitle}</p>
         </motion.div>
 
         {/* Category Tabs */}
@@ -103,10 +103,10 @@ export default function CategoryShowcase({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
             onClick={() => setSelectedCategory(null)}
-            className={`px-6 py-3 rounded-2xl font-medium transition-all duration-300 ${
+            className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
               selectedCategory === null
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md'
+                ? 'bg-[#4682B4] text-white shadow-lg hover:bg-[#2C3E50]'
+                : 'bg-white text-[#2C3E50] hover:bg-[#F8F9FA] shadow-md border border-gray-200'
             }`}
           >
             All Categories
@@ -118,10 +118,10 @@ export default function CategoryShowcase({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
               onClick={() => setSelectedCategory(category.name)}
-              className={`px-6 py-3 rounded-2xl font-medium transition-all duration-300 ${
+              className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                 selectedCategory === category.name
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 shadow-md'
+                  ? 'bg-[#4682B4] text-white shadow-lg hover:bg-[#2C3E50]'
+                  : 'bg-white text-[#2C3E50] hover:bg-[#F8F9FA] shadow-md border border-gray-200'
               }`}
             >
               {category.name}
@@ -143,7 +143,7 @@ export default function CategoryShowcase({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200"
             >
               {/* Category Header */}
               <div className="relative">
@@ -180,13 +180,13 @@ export default function CategoryShowcase({
               {categoryProducts[category.name] && categoryProducts[category.name].length > 0 && (
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-gray-900 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
+                    <h4 className="font-semibold text-[#2C3E50] flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2 text-[#4682B4]" />
                       Popular in {category.name}
                     </h4>
                     <Link
                       to={`/products?category=${encodeURIComponent(category.slug || category.name)}`}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-[#4682B4] hover:text-[#2C3E50] text-sm font-medium"
                     >
                       View All
                     </Link>
@@ -199,7 +199,7 @@ export default function CategoryShowcase({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3, delay: productIndex * 0.1 }}
-                        className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="flex items-center space-x-3 p-3 bg-[#F8F9FA] rounded-lg hover:bg-[#E9ECEF] transition-colors"
                       >
                         <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
                           <ImageWithFallback
@@ -211,23 +211,23 @@ export default function CategoryShowcase({
                         <div className="flex-1 min-w-0">
                           <Link
                             to={`/products/${product.id}`}
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600 line-clamp-1"
+                            className="text-sm font-medium text-[#2C3E50] hover:text-[#4682B4] line-clamp-1"
                           >
                             {product.name}
                           </Link>
                           <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-sm font-bold text-gray-900">
+                            <span className="text-sm font-bold text-[#2C3E50]">
                               R{product.price.toFixed(2)}
                             </span>
                             {product.original_price && product.original_price > product.price && (
-                              <span className="text-xs text-gray-500 line-through">
+                              <span className="text-xs text-[#6C757D] line-through">
                                 R{product.original_price.toFixed(2)}
                               </span>
                             )}
                             {product.rating && (
                               <div className="flex items-center">
                                 <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                                <span className="text-xs text-gray-600 ml-1">
+                                <span className="text-xs text-[#6C757D] ml-1">
                                   {product.rating}
                                 </span>
                               </div>
@@ -252,7 +252,7 @@ export default function CategoryShowcase({
         >
           <Link
             to="/products"
-            className="inline-flex items-center bg-blue-600 text-white px-8 py-4 rounded-2xl font-semibold hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            className="inline-flex items-center bg-[#4682B4] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[#2C3E50] transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
           >
             <Package className="h-5 w-5 mr-2" />
             Browse All Categories

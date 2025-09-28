@@ -26,6 +26,7 @@ import DatabaseFixVerification from '../../components/admin/DatabaseFixVerificat
 import RealTimeRegistrationTest from '../../components/admin/RealTimeRegistrationTest';
 import QuickRegistrationTest from '../../components/admin/QuickRegistrationTest';
 import StockNotificationManager from '../../components/admin/StockNotificationManager';
+import AdvancedAnalytics from '../../components/admin/AdvancedAnalytics';
 
 // Import Supabase client
 import { supabase } from '../../lib/supabase';
@@ -395,6 +396,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="testing" className="flex items-center gap-2">
               <TestTube className="h-4 w-4" />
               Registration Testing
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Advanced Analytics
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
@@ -880,6 +885,13 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Advanced Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <AdvancedAnalytics />
             </div>
           </TabsContent>
 
