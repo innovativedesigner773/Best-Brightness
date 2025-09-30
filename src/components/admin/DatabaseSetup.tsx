@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { CheckCircle2, AlertTriangle, Database, RefreshCw, Play, Settings, Copy, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { setupDatabase, checkDatabaseHealth, DatabaseSetup } from '../../utils/database-setup';
 import EnvironmentSetup from './EnvironmentSetup';
 import { useAuth } from '../../contexts/AuthContext';

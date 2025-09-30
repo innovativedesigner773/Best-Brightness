@@ -3,7 +3,7 @@ import { X, Share2, Copy, Check, Clock, MessageSquare, Calendar, ExternalLink, S
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { ShareableCartService } from '../../utils/shareable-cart';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import LoadingSpinner from './LoadingSpinner';
 
 interface ShareCartModalProps {

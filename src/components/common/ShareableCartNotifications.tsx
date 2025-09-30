@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, X, Bell } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ShareableCartService } from '../../utils/shareable-cart';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface ShareableCartNotification {
   id: string;

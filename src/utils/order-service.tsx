@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { generateUniqueId } from './id-generator';
 
 export interface OrderItem {

@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { CheckCircle2, AlertTriangle, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface EnvStatus {
   supabaseUrl: boolean;

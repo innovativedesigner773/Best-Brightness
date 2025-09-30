@@ -1,5 +1,5 @@
 import { offlineManager } from './offline-manager';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 // Mock delay to simulate network requests
 const mockDelay = (ms: number = 500) => new Promise(resolve => setTimeout(resolve, ms));

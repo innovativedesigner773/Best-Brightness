@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 // Utility to manually create the exec_sql function
 export async function createExecSqlFunction() {

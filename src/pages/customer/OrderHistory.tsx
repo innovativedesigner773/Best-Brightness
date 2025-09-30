@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { OrderService } from '../../utils/order-service';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface Order {
   id: string;

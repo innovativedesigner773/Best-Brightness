@@ -8,7 +8,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ShareCartModal from '../../components/common/ShareCartModal';
 import { ShareableCartService } from '../../utils/shareable-cart';
 import { supabase } from '../../lib/supabase';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 export default function Cart() {
   const {
