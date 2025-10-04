@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient } from "@supabase/supabase-js";
 import { SQL_FUNCTIONS, installSQLFunctions } from "./sql-functions.tsx";
 
 // Database setup for Best Brightness E-Commerce Platform

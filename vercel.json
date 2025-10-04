@@ -1,11 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "framework": "vite",
   "functions": {
     "api/**/*.tsx": {
-      "runtime": "@vercel/node@3.0.0",
+      "runtime": "@vercel/node@20.x",
       "maxDuration": 30
     }
   },
@@ -13,6 +13,11 @@
     "NODE_ENV": "production"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
   }
 }

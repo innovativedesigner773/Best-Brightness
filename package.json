@@ -56,7 +56,10 @@
         "tailwind-merge": "^2.0.0",
         "vaul": "^1.1.2",
         "vite": "^5.4.19",
-        "vite-plugin-pwa": "^0.17.0"
+        "vite-plugin-pwa": "^0.17.0",
+        "hono": "^3.12.0",
+        "terser": "^5.24.0",
+        "zod": "^3.22.4"
     },
     "devDependencies": {
         "@types/node": "^20.10.0",
@@ -71,12 +74,13 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "preview": "vite preview",
+        "type-check": "tsc --noEmit",
         "setup": "node src/scripts/setup.js",
         "offline-setup": "node src/scripts/offline-setup.js",
         "quick-start": "node src/fix-and-start.js",
         "process-notifications": "node src/scripts/process-pending-notifications.js",
-        "preview": "vite preview",
-        "type-check": "tsc --noEmit"
+        "vercel-build": "npm run build"
     },
     "engines": {
         "node": "18.x"

@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient } from "@supabase/supabase-js";
 import { createErrorResponse } from "./utils.tsx";
 
 // Initialize Supabase client
