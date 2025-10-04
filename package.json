@@ -77,5 +77,8 @@
         "process-notifications": "node src/scripts/process-pending-notifications.js",
         "preview": "vite preview",
         "type-check": "tsc --noEmit"
+    },
+    "engines": {
+        "node": "18.x"
     }
 }
