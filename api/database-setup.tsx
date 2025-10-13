@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient } from "@supabase/supabase-js";
 import { SQL_FUNCTIONS, installSQLFunctions } from "./sql-functions.tsx";
 
 // Database setup for Best Brightness E-Commerce Platform
@@ -7,8 +7,8 @@ export class DatabaseSetup {
 
   constructor() {
     this.supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
   }
 
@@ -789,8 +789,8 @@ export class DatabaseSetup {
 // Helper function to execute SQL
 export async function execSql(sql: string) {
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
   
   const { data, error } = await supabase.rpc('exec_sql', { sql });

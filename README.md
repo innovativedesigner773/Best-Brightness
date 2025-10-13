@@ -218,10 +218,53 @@ export function ShinyButton() {
 }
 ```
 
+ ## 🚀 Deployment to Vercel
+
+ This project is ready to deploy to Vercel with zero configuration!
+
+ ### Quick Deploy
+
+ 1. **Install Vercel CLI**:
+    ```bash
+    npm install -g vercel
+    ```
+
+ 2. **Login to Vercel**:
+    ```bash
+    vercel login
+    ```
+
+ 3. **Deploy**:
+    ```bash
+    vercel
+    ```
+
+ 4. **Deploy to Production**:
+    ```bash
+    vercel --prod
+    ```
+
+ ### Environment Variables
+
+ Don't forget to set these environment variables in your Vercel project:
+
+ - `SUPABASE_URL` - Your Supabase project URL
+ - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
+ - `VITE_SUPABASE_URL` - Same as SUPABASE_URL
+ - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+ - `BARCODE_LOOKUP_API_KEY` - (Optional) For barcode scanning features
+
+ ### Complete Deployment Guide
+
+ For detailed deployment instructions, troubleshooting, and best practices, see:
+ 📖 **[VERCEL_DEPLOYMENT_COMPLETE.md](./VERCEL_DEPLOYMENT_COMPLETE.md)**
+
  ## 🔗 References
 
  - GitHub repo: [`innovativeDesigner773/Best-Brightness`](https://github.com/innovativedesigner773/Best-Brightness.git)
+ - Deployment Guide: [VERCEL_DEPLOYMENT_COMPLETE.md](./VERCEL_DEPLOYMENT_COMPLETE.md)
 
  ---
 
  Built with React, TypeScript, and modern web tooling. Works offline by default; connect Supabase for full online features.
+ **Ready to deploy to Vercel!** ✨

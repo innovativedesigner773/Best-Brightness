@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { handle } from 'hono/vercel';
 import { createClient } from '@supabase/supabase-js';
 import * as kv from './kv_store.tsx';
 
@@ -18,8 +19,8 @@ app.use('*', cors({
 app.use('*', logger(console.log));
 
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // Health check endpoint - completely public, no auth required
@@ -285,7 +286,7 @@ app.post('/make-server-8880f2f2/barcode/lookup', async (c) => {
       return c.json({ error: 'Barcode is required' }, 400);
     }
 
-    const apiKey = Deno.env.get('BARCODE_LOOKUP_API_KEY');
+    const apiKey = process.env.BARCODE_LOOKUP_API_KEY;
     if (!apiKey) {
       return c.json({ error: 'Barcode Lookup API key not configured' }, 500);
     }
@@ -455,4 +456,5 @@ console.log('  - GET  /make-server-8880f2f2/barcode/check/:barcode (public)');
 console.log('  - POST /make-server-8880f2f2/init-database (requires auth)');
 console.log('  - POST /make-server-8880f2f2/barcode/add-product (requires auth)');
 
-Deno.serve(app.fetch);
+// Export for Vercel using Hono's Vercel adapter
+export default handle(app);

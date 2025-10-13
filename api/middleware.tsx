@@ -1,10 +1,10 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient } from "@supabase/supabase-js";
 import { createErrorResponse } from "./utils.tsx";
 
 // Initialize Supabase client
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // Rate limiting store (in production, use Redis or similar)
@@ -300,7 +300,7 @@ export async function errorHandler(error: any, c: any) {
   return c.json(createErrorResponse(
     'Internal server error',
     'An unexpected error occurred',
-    Deno.env.get('NODE_ENV') === 'development' ? { stack: error.stack } : undefined
+    process.env.NODE_ENV === 'development' ? { stack: error.stack } : undefined
   ), 500);
 }
 
