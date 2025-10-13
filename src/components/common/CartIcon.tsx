@@ -76,10 +76,10 @@ export default function CartIcon({ className = '' }: CartIconProps) {
       {/* Cart Icon Button */}
       <button
         onClick={handleCartClick}
-        className="relative p-2 text-gray-700 hover:text-[#4682B4] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#4682B4] focus:ring-offset-2 rounded-lg"
+        className="relative p-1.5 sm:p-2 text-gray-700 hover:text-[#4682B4] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#4682B4] focus:ring-offset-2 rounded-lg"
         aria-label={`Shopping cart with ${itemCount} items`}
       >
-        <ShoppingCart id="cart-icon" className="h-6 w-6" />
+        <ShoppingCart id="cart-icon" className="h-5 w-5 sm:h-6 sm:w-6" />
         
         {/* Cart Badge */}
         <AnimatePresence>
@@ -88,9 +88,9 @@ export default function CartIcon({ className = '' }: CartIconProps) {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg"
+              className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 bg-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center shadow-lg"
             >
-              {itemCount > 99 ? '99+' : itemCount}
+              {itemCount > 9 ? '9+' : itemCount}
             </motion.div>
           )}
         </AnimatePresence>
@@ -104,7 +104,7 @@ export default function CartIcon({ className = '' }: CartIconProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50"
+            className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100">

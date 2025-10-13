@@ -63,23 +63,104 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50 border-b border-[#B0E0E6]/30">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg sticky top-0 z-50 border-b border-[#B0E0E6]/30 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <div className="bg-gradient-to-br from-[#87CEEB] to-[#4682B4] text-white p-2 rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-lg">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <div>
-              <span className="text-xl font-bold text-[#2C3E50] group-hover:text-[#4682B4] transition-colors">
-                Best Brightness
-              </span>
-              <div className="text-xs text-[#87CEEB] font-medium">
-                Professional Cleaning
+        {/* Mobile: Two-row layout, Desktop: Single row */}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+          {/* First Row: Logo and Icons */}
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0">
+              <div className="bg-gradient-to-br from-[#87CEEB] to-[#4682B4] text-white p-1.5 sm:p-2 rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-lg">
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
+              <div className="min-w-0">
+                <span className="text-base sm:text-xl font-bold text-[#2C3E50] dark:text-white group-hover:text-[#4682B4] transition-colors block truncate">
+                  Best Brightness
+                </span>
+                <div className="text-xs text-[#87CEEB] font-medium hidden sm:block">
+                  Professional Cleaning
+                </div>
+              </div>
+            </Link>
+          
+            {/* Mobile Icons Row - All icons visible on mobile */}
+            <div className="flex md:hidden items-center gap-1">
+              {/* Favourites */}
+              <Link
+                to="/favourites"
+                className="relative p-1.5 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-lg transition-all"
+                title="Favourites"
+              >
+                <Heart className="h-5 w-5" />
+                {favouriteItems.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                    {favouriteItems.length > 9 ? '9+' : favouriteItems.length}
+                  </span>
+                )}
+              </Link>
+
+              {/* Stock Notifications - Only for authenticated users */}
+              {user && (
+                <Link
+                  to="/notifications"
+                  className="relative p-1.5 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-lg transition-all"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {notifications.filter(n => !n.is_notified).length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                      {notifications.filter(n => !n.is_notified).length > 9 ? '9+' : notifications.filter(n => !n.is_notified).length}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {/* Cart Icon */}
+              <CartIcon />
+
+              {/* Shareable Cart Notifications */}
+              {user && <ShareableCartNotifications />}
+
+              {/* User Profile or Auth Buttons - Mobile */}
+              {user ? (
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center p-1.5 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <div className="bg-gradient-to-br from-[#87CEEB] to-[#4682B4] rounded-full p-1">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                </button>
+              ) : null}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-1.5 text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-lg transition-colors ml-1"
+              >
+                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </div>
-          </Link>
+          </div>
+
+          {/* Second Row: Auth Buttons (Mobile only, when not logged in) */}
+          {!user && (
+            <div className="flex md:hidden items-center justify-center gap-2 pb-3 pt-1">
+              <Link
+                to="/login"
+                className="text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] px-4 py-2 rounded-lg transition-colors font-medium hover:bg-[#F8F9FA] dark:hover:bg-gray-800 text-sm"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="bg-gradient-to-r from-[#4682B4] to-[#87CEEB] text-white px-4 py-2 rounded-lg hover:from-[#2C3E50] hover:to-[#4682B4] transition-all duration-300 font-medium shadow-lg text-sm"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -87,7 +168,7 @@ export default function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="text-[#2C3E50] hover:text-[#4682B4] px-3 py-2 rounded-lg transition-colors font-medium hover:bg-[#F8F9FA]"
+                className="text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] px-3 py-2 rounded-lg transition-colors font-medium hover:bg-[#F8F9FA] dark:hover:bg-gray-800"
               >
                 {link.label}
               </Link>
@@ -96,20 +177,20 @@ export default function Navbar() {
             {/* Admin/Cashier Links */}
             {isAtLeastRole('cashier') && (
               <div className="relative group">
-                <button className="text-[#2C3E50] hover:text-[#4682B4] px-3 py-2 rounded-lg transition-colors flex items-center font-medium hover:bg-[#F8F9FA]">
+                <button className="text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] px-3 py-2 rounded-lg transition-colors flex items-center font-medium hover:bg-[#F8F9FA] dark:hover:bg-gray-800">
                   Dashboard
                   <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-[#B0E0E6]/30 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-[#B0E0E6]/30 dark:border-gray-700 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
                   {isAtLeastRole('admin') && adminLinks.map((link) => (
                     <Link
                       key={link.to}
                       to={link.to}
-                      className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors first:rounded-t-xl last:rounded-b-xl"
                     >
-                      <link.icon className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                      <link.icon className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                       {link.label}
                     </Link>
                   ))}
@@ -117,9 +198,9 @@ export default function Navbar() {
                     <Link
                       key={link.to}
                       to={link.to}
-                      className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors first:rounded-t-xl last:rounded-b-xl"
                     >
-                      <link.icon className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                      <link.icon className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                       {link.label}
                     </Link>
                   ))}
@@ -134,24 +215,24 @@ export default function Navbar() {
               <input
                 type="text"
                 placeholder="Search cleaning products..."
-                className="w-full pl-10 pr-4 py-2 border border-[#B0E0E6] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#87CEEB] focus:border-transparent bg-[#F8F9FA]/50 hover:bg-white transition-colors"
+                className="w-full pl-10 pr-4 py-2 border border-[#B0E0E6] dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#87CEEB] focus:border-transparent bg-[#F8F9FA]/50 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700 transition-colors text-[#2C3E50] dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
               />
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-[#87CEEB]" />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-[#87CEEB] dark:text-blue-400" />
             </div>
           </div>
 
-          {/* Right Side */}
-          <div className="flex items-center space-x-4">
-            {/* Favourites Icon - Always visible */}
+          {/* Right Side - Desktop only */}
+          <div className="hidden md:flex items-center space-x-2 md:space-x-4">
+            {/* Favourites Icon */}
             <Link
               to="/favourites"
-              className="hidden md:flex relative p-2 text-[#2C3E50] hover:text-[#4682B4] hover:bg-[#F8F9FA] rounded-xl transition-all duration-300 group"
+              className="relative p-2 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-xl transition-all duration-300 group"
               title="Favourites"
             >
               <Heart className="h-6 w-6 group-hover:scale-110 transition-transform" />
               {favouriteItems.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                  {favouriteItems.length > 99 ? '99+' : favouriteItems.length}
+                  {favouriteItems.length > 9 ? '9+' : favouriteItems.length}
                 </span>
               )}
             </Link>
@@ -160,20 +241,20 @@ export default function Navbar() {
             {user && (
               <Link
                 to="/notifications"
-                className="hidden md:flex relative p-2 text-[#2C3E50] hover:text-[#4682B4] hover:bg-[#F8F9FA] rounded-xl transition-all duration-300 group"
+                className="relative p-2 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-xl transition-all duration-300 group"
                 title="Stock Notifications"
               >
                 <Bell className="h-6 w-6 group-hover:scale-110 transition-transform" />
                 {notifications.filter(n => !n.is_notified).length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                    {notifications.filter(n => !n.is_notified).length > 99 ? '99+' : notifications.filter(n => !n.is_notified).length}
+                    {notifications.filter(n => !n.is_notified).length > 9 ? '9+' : notifications.filter(n => !n.is_notified).length}
                   </span>
                 )}
               </Link>
             )}
 
             {/* Cart Icon - Always visible */}
-            <CartIcon className="hidden md:block" />
+            <CartIcon />
 
             {/* Shareable Cart Notifications - Only for authenticated users */}
             {user && <ShareableCartNotifications />}
@@ -184,7 +265,7 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center space-x-2 p-2 text-[#2C3E50] hover:text-[#4682B4] transition-colors hover:bg-[#F8F9FA] rounded-xl"
+                    className="flex items-center space-x-1 sm:space-x-2 p-2 text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] transition-colors hover:bg-[#F8F9FA] dark:hover:bg-gray-800 rounded-xl"
                   >
                     <div className="bg-gradient-to-br from-[#87CEEB] to-[#4682B4] rounded-full p-1">
                       <User className="h-5 w-5 text-white" />
@@ -195,55 +276,55 @@ export default function Navbar() {
                   </button>
 
                   {isProfileOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-[#B0E0E6]/30 z-50">
+                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-[#B0E0E6]/30 dark:border-gray-700 z-50">
                       <div className="py-2">
-                        <div className="px-4 py-3 border-b border-[#B0E0E6]/30 bg-gradient-to-r from-[#F8F9FA] to-white">
-                          <p className="font-semibold text-[#2C3E50]">
+                        <div className="px-4 py-3 border-b border-[#B0E0E6]/30 dark:border-gray-700 bg-gradient-to-r from-[#F8F9FA] to-white dark:from-gray-700 dark:to-gray-800">
+                          <p className="font-semibold text-[#2C3E50] dark:text-white">
                             {getFullUserName()}
                           </p>
-                          <p className="text-sm text-gray-600">{user?.email}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
                           <div className="flex items-center mt-2">
-                            <Sparkles className="h-3 w-3 text-[#87CEEB] mr-1" />
-                            <span className="text-sm text-[#4682B4] font-medium">
+                            <Sparkles className="h-3 w-3 text-[#87CEEB] dark:text-blue-400 mr-1" />
+                            <span className="text-sm text-[#4682B4] dark:text-blue-400 font-medium">
                               {getLoyaltyPoints()} points
                             </span>
                           </div>
                         </div>
                         <Link
                           to="/profile"
-                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <User className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                          <User className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                           Profile Settings
                         </Link>
                         <Link
                           to="/favourites"
-                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <Heart className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                          <Heart className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                           My Favourites ({favouriteItems.length})
                         </Link>
                         <Link
                           to="/notifications"
-                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <Bell className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                          <Bell className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                           Stock Notifications ({notifications.filter(n => !n.is_notified).length})
                         </Link>
                         <Link
                           to="/orders"
-                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                          className="flex items-center px-4 py-3 text-sm text-[#2C3E50] dark:text-gray-300 hover:bg-[#F8F9FA] dark:hover:bg-gray-700 hover:text-[#4682B4] transition-colors"
                           onClick={() => setIsProfileOpen(false)}
                         >
-                          <Package className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                          <Package className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                           Order History
                         </Link>
                         <button
                           onClick={handleSignOut}
-                          className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors rounded-b-xl"
+                          className="flex items-center w-full px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-b-xl"
                         >
                           <LogOut className="h-4 w-4 mr-3" />
                           Sign Out
@@ -254,35 +335,27 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 md:space-x-3">
                 <Link
                   to="/login"
-                  className="text-[#2C3E50] hover:text-[#4682B4] px-4 py-2 rounded-xl transition-colors font-medium hover:bg-[#F8F9FA]"
+                  className="text-[#2C3E50] dark:text-gray-300 hover:text-[#4682B4] px-3 md:px-4 py-2 rounded-lg transition-colors font-medium hover:bg-[#F8F9FA] dark:hover:bg-gray-800"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-[#4682B4] to-[#87CEEB] text-white px-6 py-2 rounded-xl hover:from-[#2C3E50] hover:to-[#4682B4] transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="bg-gradient-to-r from-[#4682B4] to-[#87CEEB] text-white px-4 md:px-6 py-2 rounded-lg hover:from-[#2C3E50] hover:to-[#4682B4] transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   Sign Up
                 </Link>
               </div>
             )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-[#2C3E50] hover:bg-[#F8F9FA] rounded-xl transition-colors"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-[#B0E0E6]/30">
+          <div className="md:hidden border-t border-[#B0E0E6]/30 dark:border-gray-700">
             <div className="py-4 space-y-2">
               {/* Search */}
               <div className="px-4 pb-4">
@@ -290,9 +363,9 @@ export default function Navbar() {
                   <input
                     type="text"
                     placeholder="Search cleaning products..."
-                    className="w-full pl-10 pr-4 py-2 border border-[#B0E0E6] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#87CEEB] bg-[#F8F9FA]/50"
+                    className="w-full pl-10 pr-4 py-2 border border-[#B0E0E6] dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#87CEEB] bg-[#F8F9FA]/50 dark:bg-gray-800 text-[#2C3E50] dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
                   />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-[#87CEEB]" />
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-[#87CEEB] dark:text-blue-400" />
                 </div>
               </div>
 
@@ -300,12 +373,12 @@ export default function Navbar() {
               <div className="px-4 pb-2">
                 <Link
                   to="/favourites"
-                  className="flex items-center justify-between w-full p-3 bg-[#F8F9FA] hover:bg-[#B0E0E6]/20 rounded-xl transition-colors"
+                  className="flex items-center justify-between w-full p-3 bg-[#F8F9FA] dark:bg-gray-800 hover:bg-[#B0E0E6]/20 dark:hover:bg-gray-700 rounded-xl transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <div className="flex items-center">
-                    <Heart className="h-5 w-5 text-[#4682B4] mr-3" />
-                    <span className="font-medium text-[#2C3E50]">My Favourites</span>
+                    <Heart className="h-5 w-5 text-[#4682B4] dark:text-blue-400 mr-3" />
+                    <span className="font-medium text-[#2C3E50] dark:text-gray-200">My Favourites</span>
                   </div>
                   {favouriteItems.length > 0 && (
                     <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-bold">
@@ -320,12 +393,12 @@ export default function Navbar() {
                 <div className="px-4 pb-2">
                   <Link
                     to="/notifications"
-                    className="flex items-center justify-between w-full p-3 bg-[#F8F9FA] hover:bg-[#B0E0E6]/20 rounded-xl transition-colors"
+                    className="flex items-center justify-between w-full p-3 bg-[#F8F9FA] dark:bg-gray-800 hover:bg-[#B0E0E6]/20 dark:hover:bg-gray-700 rounded-xl transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <div className="flex items-center">
-                      <Bell className="h-5 w-5 text-[#4682B4] mr-3" />
-                      <span className="font-medium text-[#2C3E50]">Stock Notifications</span>
+                      <Bell className="h-5 w-5 text-[#4682B4] dark:text-blue-400 mr-3" />
+                      <span className="font-medium text-[#2C3E50] dark:text-gray-200">Stock Notifications</span>
                     </div>
                     {notifications.filter(n => !n.is_notified).length > 0 && (
                       <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs px-2 py-1 rounded-full font-bold">
@@ -346,7 +419,7 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="block px-4 py-3 text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors font-medium"
+                  className="block px-4 py-3 text-[#2C3E50] dark:text-gray-200 hover:bg-[#F8F9FA] dark:hover:bg-gray-800 hover:text-[#4682B4] transition-colors font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {link.label}
@@ -358,10 +431,10 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="flex items-center px-4 py-3 text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                  className="flex items-center px-4 py-3 text-[#2C3E50] dark:text-gray-200 hover:bg-[#F8F9FA] dark:hover:bg-gray-800 hover:text-[#4682B4] transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <link.icon className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                  <link.icon className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                   {link.label}
                 </Link>
               ))}
@@ -369,10 +442,10 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="flex items-center px-4 py-3 text-[#2C3E50] hover:bg-[#F8F9FA] hover:text-[#4682B4] transition-colors"
+                  className="flex items-center px-4 py-3 text-[#2C3E50] dark:text-gray-200 hover:bg-[#F8F9FA] dark:hover:bg-gray-800 hover:text-[#4682B4] transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <link.icon className="h-4 w-4 mr-3 text-[#87CEEB]" />
+                  <link.icon className="h-4 w-4 mr-3 text-[#87CEEB] dark:text-blue-400" />
                   {link.label}
                 </Link>
               ))}

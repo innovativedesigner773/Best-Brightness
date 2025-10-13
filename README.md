@@ -218,6 +218,57 @@ export function ShinyButton() {
 }
 ```
 
+ ## 📱 Mobile Responsive Design
+
+ The entire app is fully optimized for mobile devices:
+
+ ### Navigation
+
+ - ✅ **Two-Row Mobile Layout**: Icons on top row, auth buttons centered on second row
+ - ✅ **Full Text Buttons**: "Sign In" and "Sign Up" always show complete text
+ - ✅ **Responsive Logo**: Adapts size and hides subtitle on small screens
+ - ✅ **All Icons Visible**: Cart, Favourites, and Notifications always accessible on mobile
+ - ✅ **Optimized Spacing**: Smart padding and margins for different screen sizes
+ - ✅ **Touch-Friendly**: All interactive elements meet minimum touch target size (44px)
+ - ✅ **No Horizontal Scroll**: Perfect fit on screens as small as 320px
+ - ✅ **Complete Dark Mode**: Full dark theme support for all navigation components
+
+ For detailed navigation improvements, see:
+ - [MOBILE_NAVBAR_FIXES.md](./MOBILE_NAVBAR_FIXES.md) - Original mobile fixes
+ - [NAVBAR_TWO_ROW_FULLTEXT_UPDATE.md](./NAVBAR_TWO_ROW_FULLTEXT_UPDATE.md) - Latest two-row layout
+
+ ### Home Page
+ - ✅ **Responsive Hero**: Text and images scale perfectly across all devices
+ - ✅ **Mobile-First Layout**: Optimized grid systems for mobile, tablet, and desktop
+ - ✅ **Touch-Friendly**: All buttons and interactive elements meet 44px minimum size
+ - ✅ **Adaptive Sections**: Trust badges, CTA, and features adapt to screen size
+
+ For complete home page responsive details, see [HOME_PAGE_RESPONSIVE_DARK_MODE.md](./HOME_PAGE_RESPONSIVE_DARK_MODE.md)
+
+ ## 🌙 Dark Mode Support
+
+ Full dark mode implementation with automatic detection and manual toggle:
+
+ - ✅ **Auto-Detection**: Respects system dark mode preference
+ - ✅ **Manual Toggle**: User can override system preference
+ - ✅ **Persistent**: Theme choice saved in localStorage
+ - ✅ **Smooth Transitions**: Seamless switching between light and dark
+ - ✅ **Full Coverage**: All pages and components support dark mode
+ - ✅ **Proper Contrast**: WCAG AA compliant color combinations
+
+ ### How to Use Dark Mode
+
+ Dark mode activates automatically based on your system settings. The theme persists across sessions.
+
+ ```javascript
+ // Manually set dark mode in browser console
+ localStorage.setItem('best-brightness-theme', 'dark')
+ // Then refresh the page
+
+ // Manually set light mode
+ localStorage.setItem('best-brightness-theme', 'light')
+ ```
+
  ## 🚀 Deployment to Vercel
 
  This project is ready to deploy to Vercel with zero configuration!

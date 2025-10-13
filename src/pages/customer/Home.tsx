@@ -168,10 +168,10 @@ const HeroSlide: React.FC<{ promotion?: any; buildPromotionUrl: (promotion: any)
             <IconComponent className="h-8 w-8 text-white mr-3" />
             <span className="text-white/90 font-medium">Professional Grade Quality</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-[#2C3E50] leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 text-[#2C3E50] dark:text-white leading-tight">
             Premium Cleaning Supplies for Every Need
           </h1>
-          <p className="text-xl mb-8 text-[#2C3E50]/80 max-w-xl">
+          <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-[#2C3E50]/80 dark:text-gray-300 max-w-xl">
             Discover our comprehensive range of professional-grade cleaning equipment, 
             industrial detergents, and essential supplies. Quality guaranteed, competitive prices, fast delivery across Durban.
           </p>
@@ -237,11 +237,11 @@ const HeroSlide: React.FC<{ promotion?: any; buildPromotionUrl: (promotion: any)
           <IconComponent className="h-8 w-8 text-white mr-3" />
           <span className="text-white/90 font-medium">Hot Deal</span>
         </div>
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 text-white leading-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 text-white leading-tight">
           {promotion.name}
         </h1>
         <motion.div 
-          className="text-3xl font-black mb-4"
+          className="text-2xl sm:text-3xl font-black mb-3 sm:mb-4"
           style={{ color: theme.accent }}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -249,7 +249,7 @@ const HeroSlide: React.FC<{ promotion?: any; buildPromotionUrl: (promotion: any)
         >
           {formatDiscount(promotion.type, promotion.value)}
         </motion.div>
-        <p className="text-xl mb-8 text-white/90 max-w-xl">
+        <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-white/90 max-w-xl">
           {promotion.description}
         </p>
         {timeRemaining && (
@@ -611,7 +611,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Server Status Diagnostic Banner */}
       {serverStatus !== 'online' && (
         <div className={`w-full p-4 text-center text-sm ${
@@ -737,9 +737,9 @@ export default function Home() {
       </section>
 
       {/* Trust Badges Section */}
-      <section className="py-16 bg-[#F8F9FA]">
+      <section className="py-12 sm:py-16 bg-[#F8F9FA] dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             {[
               { icon: Truck, title: 'Free Delivery', desc: 'On orders over R500', color: 'from-[#87CEEB] to-[#B0E0E6]' },
               { icon: CheckCircle, title: 'Quality Guarantee', desc: '100% satisfaction guaranteed', color: 'from-[#28A745] to-[#20c997]' },
@@ -753,11 +753,11 @@ export default function Home() {
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 className="text-center group"
               >
-                <div className={`bg-gradient-to-br ${item.color} rounded-2xl p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                  <item.icon className="h-10 w-10 text-white" />
+                <div className={`bg-gradient-to-br ${item.color} rounded-2xl p-4 sm:p-6 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                  <item.icon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
-                <h3 className="font-semibold mb-2 text-[#2C3E50]">{item.title}</h3>
-                <p className="text-gray-600 text-sm">{item.desc}</p>
+                <h3 className="font-semibold mb-1 sm:mb-2 text-[#2C3E50] dark:text-white">{item.title}</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -840,7 +840,7 @@ export default function Home() {
       />
 
       {/* Enhanced Final CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-[#87CEEB] via-[#B0E0E6] to-[#4682B4] relative overflow-hidden">
+      <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-[#87CEEB] via-[#B0E0E6] to-[#4682B4] dark:from-blue-900 dark:via-blue-800 dark:to-blue-900 relative overflow-hidden">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 border border-white rounded-full"></div>
@@ -860,83 +860,83 @@ export default function Home() {
                 <Users className="h-12 w-12 text-white" />
               </div>
             </div>
-            <h2 className="text-4xl font-bold mb-6 text-white">Ready to Get Started?</h2>
-            <p className="text-xl mb-10 text-white/90 max-w-2xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 text-white">Ready to Get Started?</h2>
+            <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 md:mb-10 text-white/90 max-w-2xl mx-auto px-4">
               Join thousands of satisfied customers across Durban who trust Best Brightness for their cleaning needs.
               Experience the difference professional-grade supplies make.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/register"
-                className="bg-white text-[#4682B4] px-8 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300 inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                className="bg-white text-[#4682B4] dark:text-blue-600 px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300 inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
               >
                 Create Account
-                <Gift className="ml-2 h-5 w-5" />
+                <Gift className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
               <Link
                 to="/products"
-                className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-[#4682B4] transition-all duration-300 inline-flex items-center justify-center"
+                className="border-2 border-white text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-semibold hover:bg-white hover:text-[#4682B4] dark:hover:text-blue-600 transition-all duration-300 inline-flex items-center justify-center"
               >
                 Browse Products
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
             </div>
           </div>
          
           {/* Enhanced Trust indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 mt-12 sm:mt-16">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6"
             >
-              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-white" />
+              <div className="bg-white/20 rounded-full p-2 sm:p-3 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">2,500+</h3>
-              <p className="text-white/80">Happy Customers</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-1 sm:mb-2">2,500+</h3>
+              <p className="text-white/80 text-sm sm:text-base">Happy Customers</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6"
             >
-              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Star className="h-8 w-8 text-white fill-current" />
+              <div className="bg-white/20 rounded-full p-2 sm:p-3 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                <Star className="h-6 w-6 sm:h-8 sm:w-8 text-white fill-current" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">4.9/5</h3>
-              <p className="text-white/80">Average Rating</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-1 sm:mb-2">4.9/5</h3>
+              <p className="text-white/80 text-sm sm:text-base">Average Rating</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6 }}
-              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6"
+              className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6"
             >
-              <div className="bg-white/20 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Truck className="h-8 w-8 text-white" />
+              <div className="bg-white/20 rounded-full p-2 sm:p-3 w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                <Truck className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">24h</h3>
-              <p className="text-white/80">Fast Durban Delivery</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-1 sm:mb-2">24h</h3>
+              <p className="text-white/80 text-sm sm:text-base">Fast Durban Delivery</p>
             </motion.div>
           </div>
 
           {/* Additional Features */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mt-8 sm:mt-12">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, delay: 0.8 }}
               className="text-center"
             >
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
-                <Shield className="h-6 w-6 text-white mx-auto" />
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-2 sm:mb-3">
+                <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white mx-auto" />
               </div>
-              <p className="text-white/80 text-sm">Quality Guarantee</p>
+              <p className="text-white/80 text-xs sm:text-sm">Quality Guarantee</p>
             </motion.div>
 
             <motion.div
@@ -945,10 +945,10 @@ export default function Home() {
               transition={{ duration: 0.4, delay: 1.0 }}
               className="text-center"
             >
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
-                <Award className="h-6 w-6 text-white mx-auto" />
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-2 sm:mb-3">
+                <Award className="h-5 w-5 sm:h-6 sm:w-6 text-white mx-auto" />
               </div>
-              <p className="text-white/80 text-sm">Professional Grade</p>
+              <p className="text-white/80 text-xs sm:text-sm">Professional Grade</p>
             </motion.div>
 
             <motion.div
@@ -957,10 +957,10 @@ export default function Home() {
               transition={{ duration: 0.4, delay: 1.2 }}
               className="text-center"
             >
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
-                <TrendingUp className="h-6 w-6 text-white mx-auto" />
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-2 sm:mb-3">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white mx-auto" />
               </div>
-              <p className="text-white/80 text-sm">Best Prices</p>
+              <p className="text-white/80 text-xs sm:text-sm">Best Prices</p>
             </motion.div>
 
             <motion.div
@@ -969,10 +969,10 @@ export default function Home() {
               transition={{ duration: 0.4, delay: 1.4 }}
               className="text-center"
             >
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-3">
-                <Headphones className="h-6 w-6 text-white mx-auto" />
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-2 sm:mb-3">
+                <Headphones className="h-5 w-5 sm:h-6 sm:w-6 text-white mx-auto" />
               </div>
-              <p className="text-white/80 text-sm">24/7 Support</p>
+              <p className="text-white/80 text-xs sm:text-sm">24/7 Support</p>
             </motion.div>
           </div>
         </motion.div>

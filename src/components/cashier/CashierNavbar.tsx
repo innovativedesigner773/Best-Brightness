@@ -61,16 +61,16 @@ export default function CashierNavbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <Link to="/cashier/dashboard" className="flex items-center space-x-3 group">
-              <div className="bg-white/20 backdrop-blur-sm text-white p-2 rounded-xl group-hover:bg-white/30 transition-all duration-300 shadow-lg">
-                <DollarSign className="h-6 w-6" />
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+            <Link to="/cashier/dashboard" className="flex items-center space-x-2 sm:space-x-3 group">
+              <div className="bg-white/20 backdrop-blur-sm text-white p-1.5 sm:p-2 rounded-xl group-hover:bg-white/30 transition-all duration-300 shadow-lg">
+                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <span className="text-xl font-bold text-white group-hover:text-[#87CEEB] transition-colors">
+              <div className="min-w-0">
+                <span className="text-base sm:text-xl font-bold text-white group-hover:text-[#87CEEB] transition-colors block truncate">
                   Cashier Portal
                 </span>
-                <div className="text-xs text-[#87CEEB] font-medium">
+                <div className="text-xs text-[#87CEEB] font-medium hidden sm:block">
                   Best Brightness POS
                 </div>
               </div>
@@ -99,7 +99,7 @@ export default function CashierNavbar() {
           </div>
 
           {/* Right Side */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
             {/* Current Time */}
             <div className="hidden md:flex items-center text-white/80 text-sm">
               <Clock className="h-4 w-4 mr-2" />
@@ -110,12 +110,12 @@ export default function CashierNavbar() {
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center space-x-2 p-2 text-white hover:bg-white/10 transition-colors rounded-xl"
+                className="flex items-center space-x-1 sm:space-x-2 p-1.5 sm:p-2 text-white hover:bg-white/10 transition-colors rounded-lg sm:rounded-xl"
               >
                 <div className="bg-white/20 backdrop-blur-sm rounded-full p-1">
-                  <User className="h-5 w-5 text-white" />
+                  <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <span className="hidden md:block font-medium">
+                <span className="hidden md:block font-medium text-sm sm:text-base">
                   {getUserDisplayName()}
                 </span>
               </button>
@@ -169,9 +169,9 @@ export default function CashierNavbar() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-white hover:bg-white/10 rounded-xl transition-colors"
+              className="md:hidden p-1.5 sm:p-2 text-white hover:bg-white/10 rounded-lg sm:rounded-xl transition-colors ml-1 sm:ml-2"
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <Menu className="h-5 w-5 sm:h-6 sm:w-6" />}
             </button>
           </div>
         </div>
